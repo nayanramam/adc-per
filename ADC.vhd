@@ -6,7 +6,7 @@ USE IEEE.STD_LOGIC_1164.all;
 ENTITY ADC IS
 	PORT (
         -- from SCOMP
-		io_addr	 : IN STD_LOGIC_VECTOR(10 DOWNTO 0);
+		io_addr	 : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
         io_read  : IN STD_LOGIC;
 		resetn 	 : IN STD_LOGIC;
 
@@ -30,21 +30,22 @@ ARCHITECTURE arch OF ADC IS
 BEGIN
 
 	-- Combinationally select channel based on io_addr
-	WITH io_addr(2 DOWNTO 0) SELECT
-		channel <= ch0 WHEN "000",
-		           ch1 WHEN "001",
-		           ch2 WHEN "010",
-		           ch3 WHEN "011",
-		           ch4 WHEN "100",
-		           ch5 WHEN "101",
-		           ch6 WHEN "110",
-		           ch7 WHEN "111",
-		           ch0 WHEN OTHERS;
+	WITH io_addr(3 DOWNTO 0) SELECT
+		channel <= ch0 WHEN "0000",
+		           ch1 WHEN "0001",
+		           ch2 WHEN "0010",
+		           ch3 WHEN "0011",
+		           ch4 WHEN "0100",
+		           ch5 WHEN "0101",
+		           ch6 WHEN "0110",
+		           ch7 WHEN "0111",
+		   --      0xDEAD WHEN OTHERS;
 
-	WITH io_addr(3) SELECT
-		io_mode <=  default    WHEN '0',
-		            ttl_debug  WHEN '1',
-		            default    WHEN OTHERS;
+	WITH io_addr(5 DOWNTO 4) SELECT
+		io_mode <=  sgl_end    WHEN "00",
+					diff       WHEN "01",
+		            ttl_debug  WHEN "10",
+		            sgl_end    WHEN OTHERS;
 
 	WITH io_addr(4) SELECT
 		ttl_sel <=  ttl_input  WHEN '0',
