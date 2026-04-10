@@ -181,7 +181,56 @@ BEGIN
 				WHEN CONVERTING =>
 					adc_start <= '1';
 					IF adc_busy = '1' THEN
-						state_rnd <= CONVERTING;
+						state <= WAIT_DONE;
+					END IF;
+
+				WHEN WAIT_DONE =>
+					IF adc_busy = '0' THEN
+						state <= DONE;
+					END IF;
+
+				WHEN DONE =>
+				    --Differential mode implementation
+					IF io_mode = diff THEN
+						IF phase = POS THEN
+							result_pos <= adc_result; -- store positive sample
+							phase      <= NEG;
+							state      <= IDLE;       -- go sample channel_neg
+						ELSE
+							--channel - channel_neg, sign-extend to 12 bits
+							result_reg <= STD_LOGIC_VECTOR(
+								RESIZE(SIGNED('0' & result_pos) - SIGNED('0' & adc_result), 12)
+							);
+							phase <= POS;
+							state <= IDLE;
+						END IF;
+					
+					--TTL debug mode implementation
+					ELSE IF io_mode = ttl_debug THEN
+						--input 0 800mV
+						IF ttl_config = ttl_input_0 THEN
+							result_reg <= STD_LOGIC_VECTOR
+							RESIZE(SIGNED('0' & adc_result) - 800, 12);
+						END IF;
+						--output 0 400mV
+						IF ttl_config = ttl_output_0 THEN
+							result_reg <= STD_LOGIC_VECTOR
+							RESIZE(SIGNED('0' & adc_result) - 400, 12);
+						END IF;
+						--input 1 2000mV
+						IF ttl_config = ttl_input_1 THEN
+							result_reg <= STD_LOGIC_VECTOR
+							RESIZE(SIGNED('0' & adc_result) - 2000, 12);
+						END IF;
+						--output 1 2700mV
+						IF ttl_config = ttl_output_1 THEN
+							result_reg <= STD_LOGIC_VECTOR
+							RESIZE(SIGNED('0' & adc_result) - 2700, 12);
+						END IF;
+					END IF;
+
+					state <= IDLE; 
+					-- Single-ended
 					ELSE
 						state_rnd <= STORE;
 					END IF;
