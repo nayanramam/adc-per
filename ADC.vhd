@@ -41,8 +41,8 @@ ARCHITECTURE arch OF ADC IS
 	-- FSM for free-running conversions
 	TYPE ADC_STATE IS (IDLE, CONVERTING, WAIT_DONE, DONE);
 	TYPE PHASE_TYPE IS (POS, NEG);
-	SIGNAL state      : ADC_STATE;
-	SIGNAL phase      : PHASE_TYPE; -- for differential (keeps track of which sample is which)
+	SIGNAL state_rnd  : ADC_STATE;
+	SIGNAL phase      : PHASE_TYPE;
 	SIGNAL result_reg : STD_LOGIC_VECTOR(11 DOWNTO 0);
 	SIGNAL result_pos : STD_LOGIC_VECTOR(11 DOWNTO 0);
 	SIGNAL active_ch  : CHANNEL_TYPE;
@@ -52,6 +52,18 @@ ARCHITECTURE arch OF ADC IS
 	SIGNAL adc_start  : STD_LOGIC;
 	SIGNAL adc_result : STD_LOGIC_VECTOR(11 DOWNTO 0);
 	SIGNAL cfg_word   : STD_LOGIC_VECTOR(5 DOWNTO 0);
+
+	-- Buffer Registers for ADC Data
+	SIGNAL buf_ch0 : STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SIGNAL buf_ch1 : STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SIGNAL buf_ch2 : STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SIGNAL buf_ch3 : STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SIGNAL buf_ch4 : STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SIGNAL buf_ch5 : STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SIGNAL buf_ch6 : STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SIGNAL buf_ch7 : STD_LOGIC_VECTOR(11 DOWNTO 0);
+
+	SIGNAL ch_count : INTEGER RANGE 0 TO 7;
 
 BEGIN
 
@@ -76,6 +88,18 @@ BEGIN
         mosi    => mosi,
         miso    => miso
     );
+
+	-- Instantiate the LTC2308 controller
+	ltc : ENTITY work.SCOMP
+
+	-- Port mapping for the SCOMP 
+    PORT MAP (
+		clock    => clk,
+		resetn => resetn,
+		IO_WRITE => config,
+		IO_READ => adc_data
+    );
+
 
 	-- Choose configuration word to send to ADC based on active_channel
 	WITH active_ch SELECT
@@ -136,25 +160,23 @@ BEGIN
 	            "0000" & result_reg WHEN io_mode = sgl_end ELSE
 	            (15 DOWNTO 12 => result_reg(11)) & result_reg;
 
-	--Free-running ADC conversion state machine
+	-- Round-robin ADC sampling state machine
 	PROCESS (clk, resetn)
-	BEGIN
+	BEGIN	
 		IF resetn = '0' THEN
-			state      <= IDLE;
-			phase      <= POS;
+			state_rnd  <= IDLE;
 			adc_start  <= '0';
-			result_reg <= (OTHERS => '0');
-			result_pos <= (OTHERS => '0');
 
 		ELSIF rising_edge(clk) THEN
-			CASE state IS
+			CASE state_rnd IS
 
 				WHEN IDLE =>
-					adc_start <= '1';
-					state     <= CONVERTING;
+					ch_count <= 0;
+					adc_start <= '0';
+					state_rnd <= CONVERTING;
 
 				WHEN CONVERTING =>
-					adc_start <= '0';
+					adc_start <= '1';
 					IF adc_busy = '1' THEN
 						state <= WAIT_DONE;
 					END IF;
@@ -207,12 +229,110 @@ BEGIN
 					state <= IDLE; 
 					-- Single-ended
 					ELSE
-						result_reg <= adc_result;
-						state      <= IDLE;
+						state_rnd <= STORE;
 					END IF;
 
+				WHEN STORE =>
+					adc_start <= '0';
+					CASE ch_count IS
+						WHEN 0 =>
+							buf_ch0 <= adc_result;
+						WHEN 1 =>
+							buf_ch1 <= adc_result;
+						WHEN 2 =>
+							buf_ch2 <= adc_result;
+						WHEN 3 =>
+							buf_ch3 <= adc_result;
+						WHEN 4 =>
+							buf_ch4 <= adc_result;
+						WHEN 5 =>
+							buf_ch5 <= adc_result;
+						WHEN 6 =>
+							buf_ch6 <= adc_result;
+						WHEN 7 =>
+							buf_ch7 <= adc_result;
+						WHEN OTHERS =>
+							NULL;
+					END CASE;
+					ch_count <= ch_count + 1;
+					state_rnd <= CONVERTING;
+
+				WHEN OTHERS =>
+					state_rnd <= IDLE;
 			END CASE;
 		END IF;
 	END PROCESS;
 	
+	PROCESS ()
+
 END arch;
+
+
+
+
+
+IF DIFF MODE
+- use IO ADDR 1 and 2 to select which buf_ch
+- subtract
+- sign extend
+
+IF TTL debug
+- use IO ADDR 1 to select buf_ch
+- use ttl_config to pick threshold
+- sub threshold from buf_ch
+- sign extend
+
+IF SGL END 
+- use IO ADDR 1 to select buf_ch
+- zero extend
+
+
+
+
+
+
+
+--Differential mode implementation
+IF io_mode = diff THEN
+	IF phase = POS THEN
+		result_pos <= adc_result; -- store positive sample
+		phase      <= NEG;
+		state      <= IDLE;       -- go sample channel_neg
+	ELSE
+		--channel - channel_neg, sign-extend to 12 bits
+		result_reg <= STD_LOGIC_VECTOR(
+			RESIZE(SIGNED('0' & result_pos) - SIGNED('0' & adc_result), 12)
+		);
+		phase <= POS;
+		state <= IDLE;
+	END IF;
+
+--TTL debug mode implementation
+ELSE IF io_mode = ttl_debug THEN
+	--input 0 800mV
+	IF ttl_config = ttl_input_0 THEN
+		result_reg <= STD_LOGIC_VECTOR
+		RESIZE(SIGNED('0' & adc_result) - 800, 12);
+	END IF;
+	--output 0 400mV
+	IF ttl_config = ttl_output_0 THEN
+		result_reg <= STD_LOGIC_VECTOR
+		RESIZE(SIGNED('0' & adc_result) - 400, 12);
+	END IF;
+	--input 1 2000mV
+	IF ttl_config = ttl_input_1 THEN
+		result_reg <= STD_LOGIC_VECTOR
+		RESIZE(SIGNED('0' & adc_result) - 2000, 12);
+	END IF;
+	--output 1 2700mV
+	IF ttl_config = ttl_output_1 THEN
+		result_reg <= STD_LOGIC_VECTOR
+		RESIZE(SIGNED('0' & adc_result) - 2700, 12);
+	END IF;
+END IF;
+
+--Single ended mode implementation					
+ELSE
+	result_reg <= adc_result;
+	state      <= IDLE;
+END IF;
