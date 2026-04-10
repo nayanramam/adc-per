@@ -124,7 +124,8 @@ BEGIN
 
 	
 	--zero-pad in single-ended mode, sign-extend otherwise
-	adc_data <= "0000" & result_reg WHEN io_mode = sgl_end ELSE
+	adc_data <= X"DEAD" WHEN (channel = ch_error OR io_mode = err OR channel_neg = ch_error) ELSE
+	            "0000" & result_reg WHEN io_mode = sgl_end ELSE
 	            (15 DOWNTO 12 => result_reg(11)) & result_reg;
 
 	-- Free-running ADC conversion state machine
