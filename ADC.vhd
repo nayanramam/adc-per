@@ -77,6 +77,18 @@ BEGIN
         miso    => miso
     );
 
+	-- Instantiate the LTC2308 controller
+	ltc : ENTITY work.SCOMP
+
+	-- Port mapping for the SCOMP 
+    PORT MAP (
+		clock    => clk,
+		resetn => resetn,
+		IO_WRITE => config,
+		IO_READ => adc_data
+    );
+
+
 	-- Choose configuration word to send to ADC based on active_channel
 	WITH active_ch SELECT
 		cfg_word <= "100010" WHEN ch0,
