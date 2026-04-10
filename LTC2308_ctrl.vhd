@@ -23,6 +23,7 @@ entity LTC2308_ctrl is
 		clk      : in  std_logic;
 		nrst     : in  std_logic;
 		start    : in  std_logic;
+		cfg      : in  std_logic_vector(5 downto 0);
 		rx_data  : out std_logic_vector(11 downto 0);
 		busy     : out std_logic;
 		
@@ -52,7 +53,6 @@ architecture internals of LTC2308_ctrl is
 	
 	-- Internal signals for data shifting
 	-- The default value here is for a single-ended conversion on channel 0
-	constant tx_data : std_logic_vector(11 downto 0) := "100010000000";
 	signal tx_reg    : std_logic_vector(11 downto 0);
 	signal rx_reg    : std_logic_vector(11 downto 0);
 
@@ -178,8 +178,8 @@ begin
 			if state = IDLE then
 				-- Load data to transmit immediately upon start signal
 				if start = '1' then
-					tx_reg <= tx_data;
-					mosi   <= tx_data(11); -- Setup the first bit on MOSI
+					tx_reg <= cfg & "000000"; -- Pad 6 config bits, remaining are don't-care
+					mosi   <= cfg(5); -- Setup the first bit (MSB of cfg) on MOSI
 				end if;
 					 
 			elsif state = TRANSFER then

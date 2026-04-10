@@ -45,6 +45,7 @@ ARCHITECTURE arch OF ADC IS
 	SIGNAL adc_busy   : STD_LOGIC;
 	SIGNAL adc_start  : STD_LOGIC;
 	SIGNAL adc_result : STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SIGNAL cfg_word   : STD_LOGIC_VECTOR(5 DOWNTO 0);
 
 BEGIN
 
@@ -61,6 +62,7 @@ BEGIN
         clk     => clk,
         nrst    => resetn,
         start   => adc_start,
+        cfg     => cfg_word,
         rx_data => adc_result,
         busy    => adc_busy,
         sclk    => sclk,
@@ -68,6 +70,19 @@ BEGIN
         mosi    => mosi,
         miso    => miso
     );
+
+	-- Build 6-bit LTC2308 config word: S/D | O/S | S1 | S0 | UNI | SLP
+	-- Single-ended unipolar mode, channel from Table 1 of datasheet
+	WITH channel SELECT
+		cfg_word <= "100010" WHEN ch0,
+		            "100110" WHEN ch1,
+		            "101010" WHEN ch2,
+		            "101110" WHEN ch3,
+		            "110010" WHEN ch4,
+		            "110110" WHEN ch5,
+		            "111010" WHEN ch6,
+		            "111110" WHEN ch7,
+		            "000000" WHEN OTHERS;
 
 	-- Combinationally select channel based on sel
 	WITH sel(3 DOWNTO 0) SELECT
@@ -108,7 +123,7 @@ BEGIN
 		            ttl_output_1    WHEN "11";
 
 	
-	-- Drive adc_data: zero-pad in single-ended mode, sign-extend otherwise
+	--zero-pad in single-ended mode, sign-extend otherwise
 	adc_data <= "0000" & result_reg WHEN io_mode = sgl_end ELSE
 	            (15 DOWNTO 12 => result_reg(11)) & result_reg;
 
