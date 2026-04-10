@@ -1,9 +1,10 @@
 LIBRARY IEEE;
 USE IEEE.STD_LOGIC_1164.all;
+USE IEEE.NUMERIC_STD.all;
 
 ENTITY ADC IS
 	PORT (
-        -- System signals
+        -- SYSTEM SIGNALS
 		clk    : IN STD_LOGIC;
 		resetn : IN STD_LOGIC;
 		io_read : IN STD_LOGIC;
@@ -38,8 +39,12 @@ ARCHITECTURE arch OF ADC IS
 	
 	-- FSM for free-running conversions
 	TYPE ADC_STATE IS (IDLE, CONVERTING, WAIT_DONE, DONE);
+	TYPE PHASE_TYPE IS (POS, NEG);
 	SIGNAL state      : ADC_STATE;
+	SIGNAL phase      : PHASE_TYPE;
 	SIGNAL result_reg : STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SIGNAL result_pos : STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SIGNAL active_ch  : CHANNEL_TYPE;
 
 	-- ADC Info Signals
 	SIGNAL adc_busy   : STD_LOGIC;
@@ -71,9 +76,8 @@ BEGIN
         miso    => miso
     );
 
-	-- Build 6-bit LTC2308 config word: S/D | O/S | S1 | S0 | UNI | SLP
-	-- Single-ended unipolar mode, channel from Table 1 of datasheet
-	WITH channel SELECT
+	-- Choose configuration word to send to ADC based on active_channel
+	WITH active_ch SELECT
 		cfg_word <= "100010" WHEN ch0,
 		            "100110" WHEN ch1,
 		            "101010" WHEN ch2,
@@ -122,8 +126,10 @@ BEGIN
 		            ttl_input_1  WHEN "10",
 		            ttl_output_1    WHEN "11";
 
-	
-	--zero-pad in single-ended mode, sign-extend otherwise
+	-- In diff mode, sample channel_neg on the NEG phase; otherwise always sample channel
+	active_ch <= channel_neg WHEN (io_mode = diff AND phase = NEG) ELSE channel;
+
+	--zero-pad in single-ended mode, sign-extend otherwise, also check for errors
 	adc_data <= X"DEAD" WHEN (channel = ch_error OR io_mode = err OR channel_neg = ch_error) ELSE
 	            "0000" & result_reg WHEN io_mode = sgl_end ELSE
 	            (15 DOWNTO 12 => result_reg(11)) & result_reg;
@@ -132,9 +138,11 @@ BEGIN
 	PROCESS (clk, resetn)
 	BEGIN
 		IF resetn = '0' THEN
-			state     <= IDLE;
-			adc_start <= '0';
+			state      <= IDLE;
+			phase      <= POS;
+			adc_start  <= '0';
 			result_reg <= (OTHERS => '0');
+			result_pos <= (OTHERS => '0');
 
 		ELSIF rising_edge(clk) THEN
 			CASE state IS
@@ -155,8 +163,50 @@ BEGIN
 					END IF;
 
 				WHEN DONE =>
-					result_reg <= adc_result;
-					state      <= IDLE;
+				    --Differential mode implementation
+					IF io_mode = diff THEN
+						IF phase = POS THEN
+							result_pos <= adc_result; -- store positive sample
+							phase      <= NEG;
+							state      <= IDLE;       -- go sample channel_neg
+						ELSE
+							--channel - channel_neg, sign-extend to 12 bits
+							result_reg <= STD_LOGIC_VECTOR(
+								RESIZE(SIGNED('0' & result_pos) - SIGNED('0' & adc_result), 12)
+							);
+							phase <= POS;
+							state <= IDLE;
+						END IF;
+					
+					--TTL debug mode implementation
+					ELSE IF io_mode = ttl_debug THEN
+						--input 0 800mV
+						IF ttl_config = ttl_input_0 THEN
+							result_reg <= STD_LOGIC_VECTOR
+							RESIZE(SIGNED('0' & adc_result) - 800, 12);
+						END IF;
+						--output 0 400mV
+						IF ttl_config = ttl_output_0 THEN
+							result_reg <= STD_LOGIC_VECTOR
+							RESIZE(SIGNED('0' & adc_result) - 400, 12);
+						END IF;
+						--input 1 2000mV
+						IF ttl_config = ttl_input_1 THEN
+							result_reg <= STD_LOGIC_VECTOR
+							RESIZE(SIGNED('0' & adc_result) - 2000, 12);
+						END IF;
+						--output 1 2700mV
+						IF ttl_config = ttl_output_1 THEN
+							result_reg <= STD_LOGIC_VECTOR
+							RESIZE(SIGNED('0' & adc_result) - 2700, 12);
+						END IF;
+					END IF;
+
+					--Single ended mode implementation					
+					ELSE
+						result_reg <= adc_result;
+						state      <= IDLE;
+					END IF;
 
 			END CASE;
 		END IF;
