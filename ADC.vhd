@@ -10,7 +10,6 @@ ENTITY ADC IS
 		io_read : IN STD_LOGIC;
 
         -- WRITE TO SCOMP
-		sel	 : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
         config  : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
 
 		-- READ TO SCOMP
@@ -30,18 +29,20 @@ ARCHITECTURE arch OF ADC IS
 	TYPE MODE_TYPE IS ( sgl_end, diff, ttl_debug, err );
 	TYPE CHANNEL_TYPE IS ( ch0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch_error);
 	TYPE TTL_CONFIG IS ( ttl_input_0, ttl_input_1, ttl_output_0, ttl_output_1 );
+	TYPE FLAG_TYPE IS ( o_ready, i_ready );
 	
 	-- SCOMP Communication Signals	
 	SIGNAL channel  : CHANNEL_TYPE;
 	SIGNAL channel_neg : CHANNEL_TYPE;
 	SIGNAL io_mode  : MODE_TYPE;
 	SIGNAL ttl_config  : TTL_CONFIG;
+	SIGNAL flag    : FLAG_TYPE;
 	
 	-- FSM for free-running conversions
 	TYPE ADC_STATE IS (IDLE, CONVERTING, WAIT_DONE, DONE);
 	TYPE PHASE_TYPE IS (POS, NEG);
 	SIGNAL state      : ADC_STATE;
-	SIGNAL phase      : PHASE_TYPE;
+	SIGNAL phase      : PHASE_TYPE; -- for differential (keeps track of which sample is which)
 	SIGNAL result_reg : STD_LOGIC_VECTOR(11 DOWNTO 0);
 	SIGNAL result_pos : STD_LOGIC_VECTOR(11 DOWNTO 0);
 	SIGNAL active_ch  : CHANNEL_TYPE;
@@ -88,44 +89,45 @@ BEGIN
 		            "111110" WHEN ch7,
 		            "000000" WHEN OTHERS;
 
-	-- Combinationally select channel based on sel
-	WITH sel(3 DOWNTO 0) SELECT
-		channel <= ch0 WHEN "0000",
-		           ch1 WHEN "0001",
-		           ch2 WHEN "0010",
-		           ch3 WHEN "0011",
-		           ch4 WHEN "0100",
-		           ch5 WHEN "0101",
-		           ch6 WHEN "0110",
-		           ch7 WHEN "0111",
+	-- Combinationally select channel based on config
+	WITH config(4 DOWNTO 2) SELECT
+		channel <= ch0 WHEN "000",
+		           ch1 WHEN "001",
+		           ch2 WHEN "010",
+		           ch3 WHEN "011",
+		           ch4 WHEN "100",
+		           ch5 WHEN "101",
+		           ch6 WHEN "110",
+		           ch7 WHEN "111",
 		           ch_error WHEN OTHERS;
 
-	-- Combinationally select mode based on sel			   
-	WITH sel(5 DOWNTO 4) SELECT
+	-- Combinationally select mode based on config			   
+	WITH config(1 DOWNTO 0) SELECT
 		io_mode <=  sgl_end    WHEN "00",
 					diff       WHEN "01",
 		            ttl_debug  WHEN "10",
 		            err    WHEN OTHERS;
 
 	-- Combinationally select negative channel based on config			   
-	WITH config(3 DOWNTO 0) SELECT
-		channel_neg <= ch0 WHEN "0000",
-				ch1 WHEN "0001",
-				ch2 WHEN "0010",
-				ch3 WHEN "0011",
-				ch4 WHEN "0100",
-				ch5 WHEN "0101",
-				ch6 WHEN "0110",
-				ch7 WHEN "0111",
+	WITH config(7 DOWNTO 5) SELECT
+		channel_neg <= ch0 WHEN "000",
+				ch1 WHEN "001",
+				ch2 WHEN "010",
+				ch3 WHEN "011",
+				ch4 WHEN "100",
+				ch5 WHEN "101",
+				ch6 WHEN "110",
+				ch7 WHEN "111",
 				ch_error WHEN OTHERS;
 
 	-- Combinationally ttl configuration based on config			   
-	WITH config(5 DOWNTO 4) SELECT
+	WITH config(9 DOWNTO 8) SELECT
 		ttl_config <=   ttl_input_0   WHEN "00",
 					ttl_output_0       WHEN "01",
 		            ttl_input_1  WHEN "10",
 		            ttl_output_1    WHEN "11";
 
+					
 	-- In diff mode, sample channel_neg on the NEG phase; otherwise always sample channel
 	active_ch <= channel_neg WHEN (io_mode = diff AND phase = NEG) ELSE channel;
 
@@ -134,7 +136,7 @@ BEGIN
 	            "0000" & result_reg WHEN io_mode = sgl_end ELSE
 	            (15 DOWNTO 12 => result_reg(11)) & result_reg;
 
-	-- Free-running ADC conversion state machine
+	--Free-running ADC conversion state machine
 	PROCESS (clk, resetn)
 	BEGIN
 		IF resetn = '0' THEN
@@ -202,7 +204,7 @@ BEGIN
 						END IF;
 					END IF;
 
-					--Single ended mode implementation					
+					-- Single-ended
 					ELSE
 						result_reg <= adc_result;
 						state      <= IDLE;
