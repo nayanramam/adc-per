@@ -28,26 +28,22 @@ ARCHITECTURE arch OF ADC IS
 	-- SCOMP Communication Enum Types
 	TYPE MODE_TYPE IS ( sgl_end, diff, ttl_debug, err );
 	TYPE CHANNEL_TYPE IS ( ch0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch_error);
-	TYPE TTL_CONFIG IS ( ttl_input_0, ttl_input_1, ttl_output_0, ttl_output_1 );
-	TYPE FLAG_TYPE IS ( o_ready, i_ready );
+	TYPE TTL_CONFIG IS ( ttl_input_0, ttl_input_1, ttl_output_0, ttl_output_1, ttl_error );
 	
 	-- SCOMP Communication Signals	
 	SIGNAL channel  : CHANNEL_TYPE;
 	SIGNAL channel_neg : CHANNEL_TYPE;
 	SIGNAL io_mode  : MODE_TYPE;
 	SIGNAL ttl_config  : TTL_CONFIG;
-	SIGNAL flag    : FLAG_TYPE;
 	
-	-- FSM for free-running conversions
-	TYPE ADC_STATE IS (IDLE, CONVERTING, WAIT_DONE, DONE);
-	TYPE PHASE_TYPE IS (POS, NEG);
+	-- FSM for round-robin ADC sampling
+	TYPE ADC_STATE IS (IDLE, CONVERTING, STORE);
 	SIGNAL state_rnd  : ADC_STATE;
-	SIGNAL phase      : PHASE_TYPE;
-	SIGNAL result_reg : STD_LOGIC_VECTOR(11 DOWNTO 0);
 	SIGNAL result_pos : STD_LOGIC_VECTOR(11 DOWNTO 0);
-	SIGNAL active_ch  : CHANNEL_TYPE;
+	SIGNAL result_neg : STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SIGNAL result_reg : STD_LOGIC_VECTOR(11 DOWNTO 0);
 
-	-- ADC Info Signals
+	-- ADC LTC2308 Controller Info Signals
 	SIGNAL adc_busy   : STD_LOGIC;
 	SIGNAL adc_start  : STD_LOGIC;
 	SIGNAL adc_result : STD_LOGIC_VECTOR(11 DOWNTO 0);
@@ -89,9 +85,6 @@ BEGIN
         miso    => miso
     );
 
-	-- Instantiate the LTC2308 controller
-	ltc : ENTITY work.SCOMP
-
 	-- Port mapping for the SCOMP 
     PORT MAP (
 		clock    => clk,
@@ -101,17 +94,7 @@ BEGIN
     );
 
 
-	-- Choose configuration word to send to ADC based on active_channel
-	WITH active_ch SELECT
-		cfg_word <= "100010" WHEN ch0,
-		            "100110" WHEN ch1,
-		            "101010" WHEN ch2,
-		            "101110" WHEN ch3,
-		            "110010" WHEN ch4,
-		            "110110" WHEN ch5,
-		            "111010" WHEN ch6,
-		            "111110" WHEN ch7,
-		            "000000" WHEN OTHERS;
+	
 
 	-- Combinationally select channel based on config
 	WITH config(4 DOWNTO 2) SELECT
@@ -149,11 +132,10 @@ BEGIN
 		ttl_config <=   ttl_input_0   WHEN "00",
 					ttl_output_0       WHEN "01",
 		            ttl_input_1  WHEN "10",
-		            ttl_output_1    WHEN "11";
+		            ttl_output_1    WHEN "11",
+		            ttl_error WHEN OTHERS;
 
-					
-	-- In diff mode, sample channel_neg on the NEG phase; otherwise always sample channel
-	active_ch <= channel_neg WHEN (io_mode = diff AND phase = NEG) ELSE channel;
+
 
 	--zero-pad in single-ended mode, sign-extend otherwise, also check for errors
 	adc_data <= X"DEAD" WHEN (channel = ch_error OR io_mode = err OR channel_neg = ch_error) ELSE
@@ -174,6 +156,27 @@ BEGIN
 					ch_count <= 0;
 					adc_start <= '0';
 					state_rnd <= CONVERTING;
+					-- Choose configuration word to send to ADC based on active_channel
+					CASE ch_count IS
+						WHEN 0 =>
+							cfg_word <= "100010";
+						WHEN 1 =>
+							cfg_word <= "100110";
+						WHEN 2 =>
+							cfg_word <= "101010";
+						WHEN 3 =>
+							cfg_word <= "101110";
+						WHEN 4 =>
+							cfg_word <= "110010";
+						WHEN 5 =>
+							cfg_word <= "110110";
+						WHEN 6 =>
+							cfg_word <= "111010";
+						WHEN 7 =>
+							cfg_word <= "111110";
+						WHEN OTHERS =>
+							cfg_word <= "000000";
+					END CASE;
 
 				WHEN CONVERTING =>
 					adc_start <= '1';
@@ -205,7 +208,7 @@ BEGIN
 						WHEN OTHERS =>
 							NULL;
 					END CASE;
-					ch_count <= ch_count + 1;
+					ch_count <= (ch_count + 1) MOD 8;
 					state_rnd <= CONVERTING;
 
 				WHEN OTHERS =>
@@ -214,76 +217,66 @@ BEGIN
 		END IF;
 	END PROCESS;
 	
-	PROCESS ()
+	PROCESS (channel, channel_neg, io_mode, ttl_config)
+	BEGIN
+		IF io_mode = diff THEN
+			WITH channel SELECT
+			result_pos <= buf_ch0 WHEN ch0,
+		       		      buf_ch1 WHEN ch1,
+		          		  buf_ch2 WHEN ch2,
+		           		  buf_ch3 WHEN ch3,
+						  buf_ch4 WHEN ch4,
+						  buf_ch5 WHEN ch5,
+						  buf_ch6 WHEN ch6,
+						  buf_ch7 WHEN ch7,
+						  "000000000000" WHEN OTHERS;
+			WITH channel_neg SELECT
+			result_neg <= buf_ch0 WHEN ch0,
+		       		      buf_ch1 WHEN ch1,
+		          		  buf_ch2 WHEN ch2,
+		           		  buf_ch3 WHEN ch3,
+						  buf_ch4 WHEN ch4,
+						  buf_ch5 WHEN ch5,
+						  buf_ch6 WHEN ch6,
+						  buf_ch7 WHEN ch7,
+						  "000000000000" WHEN OTHERS;
+			result_reg <= result_pos - result_neg;
+
+		ELSIF io_mode = sgl_end THEN
+			WITH channel SELECT
+			result_reg <= buf_ch0 WHEN ch0,
+		       		      buf_ch1 WHEN ch1,
+		          		  buf_ch2 WHEN ch2,
+		           		  buf_ch3 WHEN ch3,
+						  buf_ch4 WHEN ch4,
+						  buf_ch5 WHEN ch5,
+						  buf_ch6 WHEN ch6,
+						  buf_ch7 WHEN ch7,
+						  "000000000000" WHEN OTHERS;
+
+		ELSIF io_mode = ttl_debug THEN
+		    WITH channel SELECT
+			result_pos <= buf_ch0 WHEN ch0,
+		       		      buf_ch1 WHEN ch1,
+		          		  buf_ch2 WHEN ch2,
+		           		  buf_ch3 WHEN ch3,
+						  buf_ch4 WHEN ch4,
+						  buf_ch5 WHEN ch5,
+						  buf_ch6 WHEN ch6,
+						  buf_ch7 WHEN ch7,
+						  "000000000000" WHEN OTHERS;
+
+			WITH ttl_config SELECT
+			result_reg <= result_pos - 800 WHEN ttl_input_0,
+						  result_pos - 400 WHEN ttl_output_0,
+						  result_pos - 2000 WHEN ttl_input_1,
+						  result_pos - 2700 WHEN ttl_output_1,
+						  "000000000000" WHEN OTHERS;
+
+		ELSE
+			result_reg <= "000000000000";
+		END IF;
+
+	END PROCESS;
 
 END arch;
-
-
-
-
-
-IF DIFF MODE
-- use IO ADDR 1 and 2 to select which buf_ch
-- subtract
-- sign extend
-
-IF TTL debug
-- use IO ADDR 1 to select buf_ch
-- use ttl_config to pick threshold
-- sub threshold from buf_ch
-- sign extend
-
-IF SGL END 
-- use IO ADDR 1 to select buf_ch
-- zero extend
-
-
-
-
-
-
-
---Differential mode implementation
-IF io_mode = diff THEN
-	IF phase = POS THEN
-		result_pos <= adc_result; -- store positive sample
-		phase      <= NEG;
-		state      <= IDLE;       -- go sample channel_neg
-	ELSE
-		--channel - channel_neg, sign-extend to 12 bits
-		result_reg <= STD_LOGIC_VECTOR(
-			RESIZE(SIGNED('0' & result_pos) - SIGNED('0' & adc_result), 12)
-		);
-		phase <= POS;
-		state <= IDLE;
-	END IF;
-
---TTL debug mode implementation
-ELSE IF io_mode = ttl_debug THEN
-	--input 0 800mV
-	IF ttl_config = ttl_input_0 THEN
-		result_reg <= STD_LOGIC_VECTOR
-		RESIZE(SIGNED('0' & adc_result) - 800, 12);
-	END IF;
-	--output 0 400mV
-	IF ttl_config = ttl_output_0 THEN
-		result_reg <= STD_LOGIC_VECTOR
-		RESIZE(SIGNED('0' & adc_result) - 400, 12);
-	END IF;
-	--input 1 2000mV
-	IF ttl_config = ttl_input_1 THEN
-		result_reg <= STD_LOGIC_VECTOR
-		RESIZE(SIGNED('0' & adc_result) - 2000, 12);
-	END IF;
-	--output 1 2700mV
-	IF ttl_config = ttl_output_1 THEN
-		result_reg <= STD_LOGIC_VECTOR
-		RESIZE(SIGNED('0' & adc_result) - 2700, 12);
-	END IF;
-END IF;
-
---Single ended mode implementation					
-ELSE
-	result_reg <= adc_result;
-	state      <= IDLE;
-END IF;
