@@ -204,6 +204,7 @@ BEGIN
 						END IF;
 					END IF;
 
+					state <= IDLE; 
 					-- Single-ended
 					ELSE
 						result_reg <= adc_result;
