@@ -122,17 +122,23 @@ WAIT_D_LP:
 
 ; Hold display ~2 seconds so you can read each test result
 HOLD:
-    LOADI   20000
+    LOAD    HOLD_COUNT
+    STORE   HOLD_TEMP
 HOLD_LP:
+    LOAD    HOLD_TEMP
     ADDI    -1
+    STORE   HOLD_TEMP
     JPOS    HOLD_LP
     RETURN
 
 ; Short delay to prevent display flicker in live mode
 DELAY:
-    LOADI   10000
+    LOAD    DELAY_COUNT
+    STORE   DELAY_TEMP
 DELAY_LP:
+    LOAD    DELAY_TEMP
     ADDI    -1
+    STORE   DELAY_TEMP
     JPOS    DELAY_LP
     RETURN
 
@@ -145,6 +151,10 @@ CHECK_DEAD:
 
 
 ; ===== DATA & CONSTANTS =====
+HOLD_COUNT:     DW 20000
+DELAY_COUNT:    DW 10000
+HOLD_TEMP:      DW &B0000000000000000
+DELAY_TEMP:     DW &B0000000000000000
 DEAD_CONST:     DW &B1101111010101101  ; 0xDEAD
 FAIL_CONST:     DW &B1111111111111111  ; 0xFFFF - shown if error test fails
 CD_TEMP:        DW &B0000000000000000
