@@ -122,7 +122,7 @@ WAIT_D_LP:
 
 ; Hold display ~2 seconds so you can read each test result
 HOLD:
-    LOADI   20000
+    LOADI   2000
 HOLD_LP:
     ADDI    -1
     JPOS    HOLD_LP
@@ -130,7 +130,7 @@ HOLD_LP:
 
 ; Short delay to prevent display flicker in live mode
 DELAY:
-    LOADI   10000
+    LOADI   1000
 DELAY_LP:
     ADDI    -1
     JPOS    DELAY_LP
