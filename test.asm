@@ -7,8 +7,9 @@
 ORG 0
 
 ; ===== TEST 1: Single-ended, Channel 0 =====
+; IO_MODE=00, IO_ADDR_POS=000 => 0000000000
 TEST_SGL_CH0:
-    LOADI   0x0000
+    LOADI   &B0000000000000000
     OUT     1
     CALL    WAIT_SINGLE
     IN      2
@@ -16,8 +17,9 @@ TEST_SGL_CH0:
     CALL    CHECK_DEAD
 
 ; ===== TEST 2: Single-ended, Channel 1 =====
+; IO_MODE=00, IO_ADDR_POS=001 => 0000000100
 TEST_SGL_CH1:
-    LOADI   0x0004
+    LOADI   &B0000000000000100
     OUT     1
     CALL    WAIT_SINGLE
     IN      2
@@ -25,8 +27,9 @@ TEST_SGL_CH1:
     CALL    CHECK_DEAD
 
 ; ===== TEST 3: Single-ended, Channel 7 =====
+; IO_MODE=00, IO_ADDR_POS=111 => 0000011100
 TEST_SGL_CH7:
-    LOADI   0x001C
+    LOADI   &B0000000000011100
     OUT     1
     CALL    WAIT_SINGLE
     IN      2
@@ -34,8 +37,9 @@ TEST_SGL_CH7:
     CALL    CHECK_DEAD
 
 ; ===== TEST 4: Differential, CH2(+) vs CH3(-) =====
+; IO_MODE=01, IO_ADDR_POS=010, IO_ADDR_NEG=011 => 0001101001
 TEST_DIFF_CH2_CH3:
-    LOADI   0x0069
+    LOADI   &B0000000001101001
     OUT     1
     CALL    WAIT_DIFF
     IN      2
@@ -43,31 +47,34 @@ TEST_DIFF_CH2_CH3:
     CALL    CHECK_DEAD
 
 ; ===== TEST 5: TTL debug, input_0 =====
+; IO_MODE=10, IO_ADDR=000 => 0000000010
 TEST_TTL_IN0:
-    LOADI   0x0002
+    LOADI   &B0000000000000010
     OUT     1
     CALL    WAIT_SINGLE
     IN      2
     STORE   RESULT_TTL
 
 ; ===== TEST 6: Error mode (expect 0xDEAD) =====
+; IO_MODE=11 => 0000000011
 TEST_ERR_MODE:
-    LOADI   0x0003
+    LOADI   &B0000000000000011
     OUT     1
     CALL    WAIT_SINGLE
     IN      2
     STORE   RESULT_ERR
-    
-    ; FIX: Must LOAD from memory; LOADI 0xDEAD is too large for SCOMP
-    LOAD    DEAD_CONST      
-    SUB     RESULT_ERR      
-    JZERO   DONE            
+
+    ; FIX: Must LOAD from memory; value too large for LOADI
+    LOAD    DEAD_CONST
+    SUB     RESULT_ERR
+    JZERO   DONE
 
 ERR_MISMATCH:
-    JUMP    ERR_MISMATCH    
+    JUMP    ERR_MISMATCH
 
 DONE:
-    JUMP    DONE            
+    JUMP    DONE
+
 
 ; Subroutines
 
@@ -86,21 +93,22 @@ WAIT_D_LP:
     RETURN
 
 CHECK_DEAD:
-    STORE   CD_TEMP         
-    SUB     DEAD_CONST      
-    JZERO   ERR_MISMATCH    
-    LOAD    CD_TEMP         
+    STORE   CD_TEMP
+    SUB     DEAD_CONST
+    JZERO   ERR_MISMATCH
+    LOAD    CD_TEMP
     RETURN
 
 
 ; Data & Constants
-DEAD_CONST:     DW 0xDEAD   
-CD_TEMP:        DW 0        
+; 0xDEAD = 1101 1110 1010 1101
+DEAD_CONST:     DW &B1101111010101101
+CD_TEMP:        DW &B0000000000000000
 
 ; Results
-RESULT_SGL_CH0: DW 0
-RESULT_SGL_CH1: DW 0
-RESULT_SGL_CH7: DW 0
-RESULT_DIFF:    DW 0
-RESULT_TTL:     DW 0
-RESULT_ERR:     DW 0
+RESULT_SGL_CH0: DW &B0000000000000000
+RESULT_SGL_CH1: DW &B0000000000000000
+RESULT_SGL_CH7: DW &B0000000000000000
+RESULT_DIFF:    DW &B0000000000000000
+RESULT_TTL:     DW &B0000000000000000
+RESULT_ERR:     DW &B0000000000000000
