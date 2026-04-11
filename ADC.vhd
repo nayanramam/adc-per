@@ -40,8 +40,6 @@ ARCHITECTURE arch OF ADC IS
 	-- FSM for round-robin ADC sampling
 	TYPE ADC_STATE IS (IDLE, CONVERTING, STORE);
 	SIGNAL state_rnd  : ADC_STATE;
-	SIGNAL result_pos : STD_LOGIC_VECTOR(11 DOWNTO 0);
-	SIGNAL result_neg : STD_LOGIC_VECTOR(11 DOWNTO 0);
 	SIGNAL result_reg : STD_LOGIC_VECTOR(11 DOWNTO 0);
 
 	-- Latch for Config
@@ -114,7 +112,7 @@ BEGIN
 	            (15 DOWNTO 12 => result_reg(11)) & result_reg;
 
 	-- TODO: change
-	adc_data <= adc_data_reg WHEN io_write = '1' AND io_addr = "00000000011" ELSE (OTHERS => 'Z');
+	adc_data <= adc_data_reg WHEN io_read = '1' AND io_addr = "00000000011" ELSE (OTHERS => 'Z');
 
 	-- Process to latch config data
 	PROCESS (clk, resetn)
@@ -122,7 +120,7 @@ BEGIN
 		IF resetn = '0' THEN
 			config_data_lat <= (OTHERS => '0');
 		ELSIF rising_edge(clk) THEN
-			IF io_read = '1' AND io_addr = "00000000011" THEN
+			IF io_write = '1' AND io_addr = "00000000011" THEN
 				config_data_lat <= adc_data;
 			END IF;
 			
@@ -204,32 +202,39 @@ BEGIN
 		END IF;
 	END PROCESS;
 	
-	PROCESS (channel, channel_neg, io_mode, ttl_config)
+	PROCESS (channel, channel_neg, io_mode, ttl_config,
+	         buf_ch0, buf_ch1, buf_ch2, buf_ch3,
+	         buf_ch4, buf_ch5, buf_ch6, buf_ch7)
+		VARIABLE vpos : STD_LOGIC_VECTOR(11 DOWNTO 0);
+		VARIABLE vneg : STD_LOGIC_VECTOR(11 DOWNTO 0);
 	BEGIN
+		vpos := "000000000000";
+		vneg := "000000000000";
+
 		IF io_mode = diff THEN
 			CASE channel IS
-				WHEN ch0 => result_pos <= buf_ch0;
-				WHEN ch1 => result_pos <= buf_ch1;
-				WHEN ch2 => result_pos <= buf_ch2;
-				WHEN ch3 => result_pos <= buf_ch3;
-				WHEN ch4 => result_pos <= buf_ch4;
-				WHEN ch5 => result_pos <= buf_ch5;
-				WHEN ch6 => result_pos <= buf_ch6;
-				WHEN ch7 => result_pos <= buf_ch7;
-				WHEN OTHERS => result_pos <= "000000000000";
+				WHEN ch0 => vpos := buf_ch0;
+				WHEN ch1 => vpos := buf_ch1;
+				WHEN ch2 => vpos := buf_ch2;
+				WHEN ch3 => vpos := buf_ch3;
+				WHEN ch4 => vpos := buf_ch4;
+				WHEN ch5 => vpos := buf_ch5;
+				WHEN ch6 => vpos := buf_ch6;
+				WHEN ch7 => vpos := buf_ch7;
+				WHEN OTHERS => vpos := "000000000000";
 			END CASE;
 			CASE channel_neg IS
-				WHEN ch0 => result_neg <= buf_ch0;
-				WHEN ch1 => result_neg <= buf_ch1;
-				WHEN ch2 => result_neg <= buf_ch2;
-				WHEN ch3 => result_neg <= buf_ch3;
-				WHEN ch4 => result_neg <= buf_ch4;
-				WHEN ch5 => result_neg <= buf_ch5;
-				WHEN ch6 => result_neg <= buf_ch6;
-				WHEN ch7 => result_neg <= buf_ch7;
-				WHEN OTHERS => result_neg <= "000000000000";
+				WHEN ch0 => vneg := buf_ch0;
+				WHEN ch1 => vneg := buf_ch1;
+				WHEN ch2 => vneg := buf_ch2;
+				WHEN ch3 => vneg := buf_ch3;
+				WHEN ch4 => vneg := buf_ch4;
+				WHEN ch5 => vneg := buf_ch5;
+				WHEN ch6 => vneg := buf_ch6;
+				WHEN ch7 => vneg := buf_ch7;
+				WHEN OTHERS => vneg := "000000000000";
 			END CASE;
-			result_reg <= std_logic_vector(unsigned(result_pos) - unsigned(result_neg));
+			result_reg <= std_logic_vector(unsigned(vpos) - unsigned(vneg));
 
 		ELSIF io_mode = sgl_end THEN
 			CASE channel IS
@@ -246,26 +251,26 @@ BEGIN
 
 		ELSIF io_mode = ttl_debug THEN
 			CASE channel IS
-				WHEN ch0 => result_pos <= buf_ch0;
-				WHEN ch1 => result_pos <= buf_ch1;
-				WHEN ch2 => result_pos <= buf_ch2;
-				WHEN ch3 => result_pos <= buf_ch3;
-				WHEN ch4 => result_pos <= buf_ch4;
-				WHEN ch5 => result_pos <= buf_ch5;
-				WHEN ch6 => result_pos <= buf_ch6;
-				WHEN ch7 => result_pos <= buf_ch7;
-				WHEN OTHERS => result_pos <= "000000000000";
+				WHEN ch0 => vpos := buf_ch0;
+				WHEN ch1 => vpos := buf_ch1;
+				WHEN ch2 => vpos := buf_ch2;
+				WHEN ch3 => vpos := buf_ch3;
+				WHEN ch4 => vpos := buf_ch4;
+				WHEN ch5 => vpos := buf_ch5;
+				WHEN ch6 => vpos := buf_ch6;
+				WHEN ch7 => vpos := buf_ch7;
+				WHEN OTHERS => vpos := "000000000000";
 			END CASE;
 
 			CASE ttl_config IS
 				WHEN ttl_input_0 =>
-					result_reg <= std_logic_vector(unsigned(result_pos) - to_unsigned(800, 12));
+					result_reg <= std_logic_vector(unsigned(vpos) - to_unsigned(800, 12));
 				WHEN ttl_output_0 =>
-					result_reg <= std_logic_vector(unsigned(result_pos) - to_unsigned(400, 12));
+					result_reg <= std_logic_vector(unsigned(vpos) - to_unsigned(400, 12));
 				WHEN ttl_input_1 =>
-					result_reg <= std_logic_vector(unsigned(result_pos) - to_unsigned(2000, 12));
+					result_reg <= std_logic_vector(unsigned(vpos) - to_unsigned(2000, 12));
 				WHEN ttl_output_1 =>
-					result_reg <= std_logic_vector(unsigned(result_pos) - to_unsigned(2700, 12));
+					result_reg <= std_logic_vector(unsigned(vpos) - to_unsigned(2700, 12));
 				WHEN OTHERS =>
 					result_reg <= "000000000000";
 			END CASE;
