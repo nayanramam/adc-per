@@ -57,23 +57,22 @@ ADC     EQU    3
 HEX_UP  EQU    4
 HEX_LO  EQU    5
 
-; ---------- ADC config words ----------
-; Default: CH0.  To use CH1 change both values to 10 and 522 (add 4 each).
-CFG_VIL EQU    2      ; ttl_debug, CH0, V_IL threshold (800 mV)
-CFG_VIH EQU    514    ; ttl_debug, CH0, V_IH threshold (2000 mV)
-
 ; ============================================================
 ; Main measurement loop
 ; ============================================================
 MAIN
         ; --- Read 1: measure V - V_IL (800 mV) ---
-        LOADI  CFG_VIL
+        ; Config = 2  (0b00_00_000_010): ttl_debug, CH0, ttl_input_0 (800 mV)
+        ; For CH1 use 10 instead; for CH2 use 18, etc. (add 4 per channel)
+        LOADI  2
         OUT    ADC
         IN     ADC
         STORE  DIL          ; DIL = V - 800  (negative if V < V_IL)
 
         ; --- Read 2: measure V - V_IH (2000 mV) ---
-        LOADI  CFG_VIH
+        ; Config = 514 (0b10_00_000_010): ttl_debug, CH0, ttl_input_1 (2000 mV)
+        ; For CH1 use 522 instead; for CH2 use 530, etc. (add 4 per channel)
+        LOADI  514
         OUT    ADC
         IN     ADC
         STORE  DIH          ; DIH = V - 2000 (positive if V > V_IH)
