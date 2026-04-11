@@ -64,7 +64,7 @@ TEST_ERR_MODE:
     IN      2
     STORE   RESULT_ERR
 
-    ; FIX: Must LOAD from memory; value too large for LOADI
+    ; FIX: Must LOAD from memory; value too large for LOADI.
     LOAD    DEAD_CONST
     SUB     RESULT_ERR
     JZERO   DONE
