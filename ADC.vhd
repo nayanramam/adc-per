@@ -38,9 +38,14 @@ ARCHITECTURE arch OF ADC IS
 	SIGNAL ttl_config  : TTL_CONFIG_TYPE;
 	
 	-- FSM for round-robin ADC sampling
-	TYPE ADC_STATE IS (IDLE, CONVERTING, STORE);
+	TYPE ADC_STATE IS (IDLE, CONVERTING, WAIT_BUSY, STORE);
 	SIGNAL state_rnd  : ADC_STATE;
-	SIGNAL result_reg : STD_LOGIC_VECTOR(11 DOWNTO 0);
+
+	-- Combinational sample path
+	SIGNAL vpos         : STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SIGNAL vneg         : STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SIGNAL sample_diff  : STD_LOGIC_VECTOR(15 DOWNTO 0);
+	SIGNAL sample_ttl   : STD_LOGIC_VECTOR(15 DOWNTO 0);
 
 	-- Latch for Config
 	SIGNAL config_data_lat : STD_LOGIC_VECTOR(15 DOWNTO 0);
@@ -104,14 +109,50 @@ BEGIN
 		            ttl_output_1    WHEN "11",
 		            ttl_error WHEN OTHERS;
 
+	-- Channel / channel_neg muxes into sample path
+	WITH channel SELECT
+		vpos <= buf_ch0 WHEN ch0,
+		        buf_ch1 WHEN ch1,
+		        buf_ch2 WHEN ch2,
+		        buf_ch3 WHEN ch3,
+		        buf_ch4 WHEN ch4,
+		        buf_ch5 WHEN ch5,
+		        buf_ch6 WHEN ch6,
+		        buf_ch7 WHEN ch7,
+		        "000000000000" WHEN OTHERS;
 
+	WITH channel_neg SELECT
+		vneg <= buf_ch0 WHEN ch0,
+		        buf_ch1 WHEN ch1,
+		        buf_ch2 WHEN ch2,
+		        buf_ch3 WHEN ch3,
+		        buf_ch4 WHEN ch4,
+		        buf_ch5 WHEN ch5,
+		        buf_ch6 WHEN ch6,
+		        buf_ch7 WHEN ch7,
+		        "000000000000" WHEN OTHERS;
 
-	--zero-pad in single-ended mode, sign-extend otherwise, also check for errors
+	-- Diff: full 16-bit subtraction (range is -4095..+4095, needs >12 bits)
+	sample_diff <= std_logic_vector(
+		("0000" & unsigned(vpos)) - ("0000" & unsigned(vneg))
+	);
+
+	-- TTL: full 16-bit subtraction against fixed thresholds
+	WITH ttl_config SELECT
+		sample_ttl <=
+			std_logic_vector(("0000" & unsigned(vpos)) - to_unsigned(800, 16))  WHEN ttl_input_0,
+			std_logic_vector(("0000" & unsigned(vpos)) - to_unsigned(400, 16))  WHEN ttl_output_0,
+			std_logic_vector(("0000" & unsigned(vpos)) - to_unsigned(2000, 16)) WHEN ttl_input_1,
+			std_logic_vector(("0000" & unsigned(vpos)) - to_unsigned(2700, 16)) WHEN ttl_output_1,
+			X"0000" WHEN OTHERS;
+
+	-- Pack 16-bit output: DEAD on error, zero-padded for single-ended, full width otherwise
 	adc_data_reg <= X"DEAD" WHEN (channel = ch_error OR io_mode = err OR channel_neg = ch_error) ELSE
-	            "0000" & result_reg WHEN io_mode = sgl_end ELSE
-	            (15 DOWNTO 12 => result_reg(11)) & result_reg;
+	            "0000" & vpos    WHEN io_mode = sgl_end ELSE
+	            sample_diff      WHEN io_mode = diff ELSE
+	            sample_ttl       WHEN io_mode = ttl_debug ELSE
+	            X"0000";
 
-	-- TODO: change
 	adc_data <= adc_data_reg WHEN io_read = '1' AND io_addr = "00000000011" ELSE (OTHERS => 'Z');
 
 	-- Process to latch config data
@@ -141,9 +182,52 @@ BEGIN
 				WHEN IDLE =>
 					ch_count <= 0;
 					adc_start <= '0';
+					cfg_word <= "100010";
 					state_rnd <= CONVERTING;
-					-- Choose configuration word to send to ADC based on active_channel
+					
+
+				WHEN CONVERTING =>
+					IF adc_busy = '0' THEN
+						adc_start <= '1';
+						state_rnd <= WAIT_BUSY;
+					ELSE
+						state_rnd <= CONVERTING;
+					END IF;
+
+				WHEN WAIT_BUSY =>
+					adc_start <= '0';
+					IF adc_busy = '1' THEN
+						state_rnd <= WAIT_BUSY;
+					ELSE
+						state_rnd <= STORE;
+					END IF;
+
+					
+				WHEN STORE =>
+					adc_start <= '0';
 					CASE ch_count IS
+						WHEN 0 =>
+							buf_ch7 <= adc_result;
+						WHEN 1 =>
+							buf_ch0 <= adc_result;
+						WHEN 2 =>
+							buf_ch1 <= adc_result;
+						WHEN 3 =>
+							buf_ch2 <= adc_result;
+						WHEN 4 =>
+							buf_ch3 <= adc_result;
+						WHEN 5 =>
+							buf_ch4 <= adc_result;
+						WHEN 6 =>
+							buf_ch5 <= adc_result;
+						WHEN 7 =>
+							buf_ch6 <= adc_result;
+						WHEN OTHERS =>
+							NULL;
+					END CASE;
+
+					-- Choose configuration word to send to ADC based on active_channel
+					CASE (ch_count + 1) MOD 8 IS
 						WHEN 0 =>
 							cfg_word <= "100010";
 						WHEN 1 =>
@@ -164,35 +248,6 @@ BEGIN
 							cfg_word <= "000000";
 					END CASE;
 
-				WHEN CONVERTING =>
-					adc_start <= '1';
-					IF adc_busy = '1' THEN
-						state_rnd <= STORE;
-					END IF;
-
-				
-				WHEN STORE =>
-					adc_start <= '0';
-					CASE ch_count IS
-						WHEN 0 =>
-							buf_ch0 <= adc_result;
-						WHEN 1 =>
-							buf_ch1 <= adc_result;
-						WHEN 2 =>
-							buf_ch2 <= adc_result;
-						WHEN 3 =>
-							buf_ch3 <= adc_result;
-						WHEN 4 =>
-							buf_ch4 <= adc_result;
-						WHEN 5 =>
-							buf_ch5 <= adc_result;
-						WHEN 6 =>
-							buf_ch6 <= adc_result;
-						WHEN 7 =>
-							buf_ch7 <= adc_result;
-						WHEN OTHERS =>
-							NULL;
-					END CASE;
 					ch_count <= (ch_count + 1) MOD 8;
 					state_rnd <= CONVERTING;
 
@@ -200,85 +255,6 @@ BEGIN
 					state_rnd <= IDLE;
 			END CASE;
 		END IF;
-	END PROCESS;
-	
-	PROCESS (channel, channel_neg, io_mode, ttl_config,
-	         buf_ch0, buf_ch1, buf_ch2, buf_ch3,
-	         buf_ch4, buf_ch5, buf_ch6, buf_ch7)
-		VARIABLE vpos : STD_LOGIC_VECTOR(11 DOWNTO 0);
-		VARIABLE vneg : STD_LOGIC_VECTOR(11 DOWNTO 0);
-	BEGIN
-		vpos := "000000000000";
-		vneg := "000000000000";
-
-		IF io_mode = diff THEN
-			CASE channel IS
-				WHEN ch0 => vpos := buf_ch0;
-				WHEN ch1 => vpos := buf_ch1;
-				WHEN ch2 => vpos := buf_ch2;
-				WHEN ch3 => vpos := buf_ch3;
-				WHEN ch4 => vpos := buf_ch4;
-				WHEN ch5 => vpos := buf_ch5;
-				WHEN ch6 => vpos := buf_ch6;
-				WHEN ch7 => vpos := buf_ch7;
-				WHEN OTHERS => vpos := "000000000000";
-			END CASE;
-			CASE channel_neg IS
-				WHEN ch0 => vneg := buf_ch0;
-				WHEN ch1 => vneg := buf_ch1;
-				WHEN ch2 => vneg := buf_ch2;
-				WHEN ch3 => vneg := buf_ch3;
-				WHEN ch4 => vneg := buf_ch4;
-				WHEN ch5 => vneg := buf_ch5;
-				WHEN ch6 => vneg := buf_ch6;
-				WHEN ch7 => vneg := buf_ch7;
-				WHEN OTHERS => vneg := "000000000000";
-			END CASE;
-			result_reg <= std_logic_vector(unsigned(vpos) - unsigned(vneg));
-
-		ELSIF io_mode = sgl_end THEN
-			CASE channel IS
-				WHEN ch0 => result_reg <= buf_ch0;
-				WHEN ch1 => result_reg <= buf_ch1;
-				WHEN ch2 => result_reg <= buf_ch2;
-				WHEN ch3 => result_reg <= buf_ch3;
-				WHEN ch4 => result_reg <= buf_ch4;
-				WHEN ch5 => result_reg <= buf_ch5;
-				WHEN ch6 => result_reg <= buf_ch6;
-				WHEN ch7 => result_reg <= buf_ch7;
-				WHEN OTHERS => result_reg <= "000000000000";
-			END CASE;
-
-		ELSIF io_mode = ttl_debug THEN
-			CASE channel IS
-				WHEN ch0 => vpos := buf_ch0;
-				WHEN ch1 => vpos := buf_ch1;
-				WHEN ch2 => vpos := buf_ch2;
-				WHEN ch3 => vpos := buf_ch3;
-				WHEN ch4 => vpos := buf_ch4;
-				WHEN ch5 => vpos := buf_ch5;
-				WHEN ch6 => vpos := buf_ch6;
-				WHEN ch7 => vpos := buf_ch7;
-				WHEN OTHERS => vpos := "000000000000";
-			END CASE;
-
-			CASE ttl_config IS
-				WHEN ttl_input_0 =>
-					result_reg <= std_logic_vector(unsigned(vpos) - to_unsigned(800, 12));
-				WHEN ttl_output_0 =>
-					result_reg <= std_logic_vector(unsigned(vpos) - to_unsigned(400, 12));
-				WHEN ttl_input_1 =>
-					result_reg <= std_logic_vector(unsigned(vpos) - to_unsigned(2000, 12));
-				WHEN ttl_output_1 =>
-					result_reg <= std_logic_vector(unsigned(vpos) - to_unsigned(2700, 12));
-				WHEN OTHERS =>
-					result_reg <= "000000000000";
-			END CASE;
-
-		ELSE
-			result_reg <= "000000000000";
-		END IF;
-
 	END PROCESS;
 
 END arch;

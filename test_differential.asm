@@ -17,7 +17,7 @@ HEX_UP  EQU    4
 HEX_LO  EQU    5
 
 ; TEST: Differential, CH2(+) vs CH3(-)
-; Expected: signed mV difference (CH2 - CH3), two's complement
+; Expected: signed mV difference (CH2 - CH3), twos complement
 TEST_DIFF_CH2_CH3:
     LOADI   &B0000000001101001
     OUT     ADC
