@@ -27,6 +27,7 @@ TEST_DIFF_CH2_CH3:
     CALL    CHECK_DEAD
     OUT     HEX_UP
     CALL    HOLD
+    JUMP    TEST_DIFF_CH2_CH3  
 
 ERR_MISMATCH:
     ; Show "FFFF" on lower digits to indicate error mode test failed
@@ -36,41 +37,13 @@ ERR_MISMATCH:
 
 ; SUBROUTINES 
 
-WAIT_SINGLE:
-    LOADI   200
-WAIT_S_LP:
-    ADDI    -1
-    JPOS    WAIT_S_LP
-    RETURN
-
 WAIT_DIFF:
     LOADI   400
-WAIT_D_LP:
-    ADDI    -1
-    JPOS    WAIT_D_LP
-    RETURN
 
 ; Hold display ~2 seconds so you can read each test result
 HOLD:
     LOAD    HOLD_COUNT
     STORE   HOLD_TEMP
-HOLD_LP:
-    LOAD    HOLD_TEMP
-    ADDI    -1
-    STORE   HOLD_TEMP
-    JPOS    HOLD_LP
-    RETURN
-
-; Short delay to prevent display flicker in live mode
-DELAY:
-    LOAD    DELAY_COUNT
-    STORE   DELAY_TEMP
-DELAY_LP:
-    LOAD    DELAY_TEMP
-    ADDI    -1
-    STORE   DELAY_TEMP
-    JPOS    DELAY_LP
-    RETURN
 
 CHECK_DEAD:
     STORE   CD_TEMP
