@@ -25,8 +25,10 @@ TEST_TTL_IN0:
     CALL    WAIT_SINGLE
     IN      ADC
     STORE   RESULT_TTL
+    CALL    CHECK_DEAD 
     OUT     HEX_UP
     CALL    HOLD
+    JUMP    TEST_TTL_IN0
 
 ERR_MISMATCH:
     ; Show "FFFF" on lower digits to indicate error mode test failed

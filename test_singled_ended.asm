@@ -5,9 +5,9 @@
 ;   [9:8]  TTL_CONFIG    sub-mode config
 ;
 ; IO address map (matched to game file):
-;   ADC    EQU 3 
-;   HEX_UP EQU 4 
-;   HEX_LO EQU 5 
+;   ADC    EQU 3
+;   HEX_UP EQU 4
+;   HEX_LO EQU 5
 
 ORG 0
 
@@ -16,28 +16,39 @@ ADC     EQU    3
 HEX_UP  EQU    4
 HEX_LO  EQU    5
 
-; LIVE VOLTAGE DISPLAY: CH0 continuous read
-; Reached only after all tests pass
-; Display shows live hex mV value: GND=0000, 3.3V=0CE4, 4.096V=1000
-LIVE_DISPLAY:
+; Send config once before the loop (VHDL latches it)
+; Single-ended, CH0, no TTL config needed
     LOADI   &B0000000000000000
     OUT     ADC
+
+; LIVE VOLTAGE DISPLAY: CH0 continuous read
+; Display shows live hex mV value: GND=0000, 3.3V=0CE4, 4.096V=1000
+LIVE_DISPLAY:
     CALL    WAIT_SINGLE
     IN      ADC
     OUT     HEX_UP
     CALL    DELAY
     JUMP    LIVE_DISPLAY
 
-; SUBROUTINES 
+; SUBROUTINES
 
 WAIT_SINGLE:
     LOADI   200
+WAIT_S_LP:
+    ADDI    -1
+    JPOS    WAIT_S_LP
+    RETURN
 
 ; Short delay to prevent display flicker in live mode
 DELAY:
     LOAD    DELAY_COUNT
     STORE   DELAY_TEMP
-
+DELAY_LP:
+    LOAD    DELAY_TEMP
+    ADDI    -1
+    STORE   DELAY_TEMP
+    JPOS    DELAY_LP
+    RETURN
 
 ; DATA & CONSTANTS
 HOLD_COUNT:     DW 20000
