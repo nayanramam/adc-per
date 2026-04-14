@@ -25,7 +25,7 @@ TEST_SGL_CH0:
     IN      ADC
     STORE   RESULT_SGL_CH0
     CALL    CHECK_DEAD
-    OUT     HEX_LO
+    OUT     HEX_UP
     CALL    HOLD
 
 ; TEST 2: Single-ended, Channel 1
@@ -37,7 +37,7 @@ TEST_SGL_CH1:
     IN      ADC
     STORE   RESULT_SGL_CH1
     CALL    CHECK_DEAD
-    OUT     HEX_LO
+    OUT     HEX_UP
     CALL    HOLD
 
 ; TEST 3: Single-ended, Channel 7
@@ -49,7 +49,7 @@ TEST_SGL_CH7:
     IN      ADC
     STORE   RESULT_SGL_CH7
     CALL    CHECK_DEAD
-    OUT     HEX_LO
+    OUT     HEX_UP
     CALL    HOLD
 
 ; TEST 4: Differential, CH2(+) vs CH3(-)
@@ -61,7 +61,7 @@ TEST_DIFF_CH2_CH3:
     IN      ADC
     STORE   RESULT_DIFF
     CALL    CHECK_DEAD
-    OUT     HEX_LO
+    OUT     HEX_UP
     CALL    HOLD
 
 ; TEST 5: TTL debug, CH0, input low threshold 
@@ -72,7 +72,7 @@ TEST_TTL_IN0:
     CALL    WAIT_SINGLE
     IN      ADC
     STORE   RESULT_TTL
-    OUT     HEX_LO
+    OUT     HEX_UP
     CALL    HOLD
 
 ; TEST 6: Error mode (expect 0xDEAD on display)
@@ -83,7 +83,7 @@ TEST_ERR_MODE:
     CALL    WAIT_SINGLE
     IN      ADC
     STORE   RESULT_ERR
-    OUT     HEX_LO          ; should show "DEAD" on lower digits
+    OUT     HEX_UP          ; should show "DEAD" on lower digits
     CALL    HOLD
 
     ; Verify it was actually 0xDEAD
@@ -94,7 +94,7 @@ TEST_ERR_MODE:
 ERR_MISMATCH:
     ; Show "FFFF" on lower digits to indicate error mode test failed
     LOAD    FAIL_CONST
-    OUT     HEX_LO
+    OUT     HEX_UP
     JUMP    ERR_MISMATCH
 
 ; LIVE VOLTAGE DISPLAY: CH0 continuous read
@@ -105,7 +105,7 @@ LIVE_DISPLAY:
     OUT     ADC
     CALL    WAIT_SINGLE
     IN      ADC
-    OUT     HEX_LO
+    OUT     HEX_UP
     CALL    DELAY
     JUMP    LIVE_DISPLAY
 
