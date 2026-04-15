@@ -135,10 +135,10 @@ BEGIN
 	-- TTL: full 16-bit subtraction against fixed thresholds
 	WITH ttl_config SELECT
 		sample_ttl <=
-			std_logic_vector(("0000" & unsigned(vpos)) - to_unsigned(800, 16))  WHEN ttl_input_0,
-			std_logic_vector(("0000" & unsigned(vpos)) - to_unsigned(400, 16))  WHEN ttl_output_0,
-			std_logic_vector(("0000" & unsigned(vpos)) - to_unsigned(2000, 16)) WHEN ttl_input_1,
-			std_logic_vector(("0000" & unsigned(vpos)) - to_unsigned(2700, 16)) WHEN ttl_output_1,
+			std_logic_vector(resize(unsigned(vpos), 16) - to_unsigned(800, 16))  WHEN ttl_input_0,
+			std_logic_vector(resize(unsigned(vpos), 16) - to_unsigned(400, 16))  WHEN ttl_output_0,
+			std_logic_vector(resize(unsigned(vpos), 16) - to_unsigned(2000, 16)) WHEN ttl_input_1,
+			std_logic_vector(resize(unsigned(vpos), 16) - to_unsigned(2700, 16)) WHEN ttl_output_1,
 			X"0000" WHEN OTHERS;
 
 	-- Pack 16-bit output: DEAD on error, zero-padded for single-ended, full width otherwise
@@ -202,21 +202,21 @@ BEGIN
 					adc_start <= '0';
 					CASE ch_count IS
 						WHEN 0 =>
-							buf_ch7 <= adc_result;
+							buf_ch1 <= adc_result;
 						WHEN 1 =>
 							buf_ch0 <= adc_result;
 						WHEN 2 =>
-							buf_ch1 <= adc_result;
+							buf_ch7 <= adc_result;
 						WHEN 3 =>
-							buf_ch2 <= adc_result;
+							buf_ch6 <= adc_result;
 						WHEN 4 =>
-							buf_ch3 <= adc_result;
+							buf_ch5 <= adc_result;
 						WHEN 5 =>
 							buf_ch4 <= adc_result;
 						WHEN 6 =>
-							buf_ch5 <= adc_result;
+							buf_ch3 <= adc_result;
 						WHEN 7 =>
-							buf_ch6 <= adc_result;
+							buf_ch2 <= adc_result;
 						WHEN OTHERS =>
 							NULL;
 					END CASE;

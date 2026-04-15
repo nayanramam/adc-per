@@ -37,7 +37,7 @@ TEST_DIFF_CH0_CH1:
     JUMP    TEST_DIFF_CH0_CH1
 
 ERR_MISMATCH:
-    ; Show "FFFF" on upper digits to indicate error mode test failed
+    ; Show "DEAD" on upper digits to indicate error mode test failed
     LOAD    FAIL_CONST
     OUT     HEX_UP
     JUMP    ERR_MISMATCH
@@ -65,7 +65,7 @@ DELAY_COUNT:    DW 10000
 HOLD_TEMP:      DW &B0000000000000000
 DELAY_TEMP:     DW &B0000000000000000
 DEAD_CONST:     DW &B1101111010101101  ; 0xDEAD
-FAIL_CONST:     DW &B1111111111111111  ; 0xFFFF - shown if error test fails
+FAIL_CONST:     DW &B1101111010101101  ; 0xDEAD - shown if error test fails
 CD_TEMP:        DW &B0000000000000000
 
 ; Results
