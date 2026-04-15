@@ -65,11 +65,6 @@ ARCHITECTURE arch OF ADC IS
 	SIGNAL ch_count : INTEGER RANGE 0 TO 7;
 
 BEGIN
-
-	-- -- Instantiate the LTC2308 controller
-	-- ltc : ENTITY work.LTC2308_ctrl
-
-
 	-- Combinationally select channel based on config
 	WITH config_data_lat(4 DOWNTO 2) SELECT
 		channel <= ch0 WHEN "000",
@@ -227,23 +222,26 @@ BEGIN
 					END CASE;
 
 					-- Choose configuration word to send to ADC based on active_channel
+					-- LTC2308 cfg_word format: [S/D, ODD, A2, A1, UNI, SLP]
+					-- ODD bit interleaves even/odd channels, so channels must be
+					-- addressed in the order CH0,CH1,CH2,...CH7 using their correct words.
 					CASE (ch_count + 1) MOD 8 IS
 						WHEN 0 =>
-							cfg_word <= "100010";
+							cfg_word <= "100010"; -- CH0: S/D=1, ODD=0, A2=0, A1=0
 						WHEN 1 =>
-							cfg_word <= "100110";
+							cfg_word <= "110010"; -- CH1: S/D=1, ODD=1, A2=0, A1=0
 						WHEN 2 =>
-							cfg_word <= "101010";
+							cfg_word <= "100110"; -- CH2: S/D=1, ODD=0, A2=0, A1=1
 						WHEN 3 =>
-							cfg_word <= "101110";
+							cfg_word <= "110110"; -- CH3: S/D=1, ODD=1, A2=0, A1=1
 						WHEN 4 =>
-							cfg_word <= "110010";
+							cfg_word <= "101010"; -- CH4: S/D=1, ODD=0, A2=1, A1=0
 						WHEN 5 =>
-							cfg_word <= "110110";
+							cfg_word <= "111010"; -- CH5: S/D=1, ODD=1, A2=1, A1=0
 						WHEN 6 =>
-							cfg_word <= "111010";
+							cfg_word <= "101110"; -- CH6: S/D=1, ODD=0, A2=1, A1=1
 						WHEN 7 =>
-							cfg_word <= "111110";
+							cfg_word <= "111110"; -- CH7: S/D=1, ODD=1, A2=1, A1=1
 						WHEN OTHERS =>
 							cfg_word <= "000000";
 					END CASE;
