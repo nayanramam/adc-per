@@ -1,0 +1,65 @@
+WIDTH=16;
+DEPTH=2048;
+
+ADDRESS_RADIX=HEX;
+DATA_RADIX=HEX;
+
+CONTENT BEGIN
+0000: 1800; --     LOADI  0
+0001: 1034; --     STORE  SCORE
+0002: 1037; --     STORE  MATCHED
+0003: 9802; --     OUT    TIMER          ; reset timer to 0
+0004: 9002; --     IN     TIMER
+0005: 3831; --     AND    MASK_FF
+0006: 1035; --     STORE  TARGET
+0007: 9002; -- MAIN:   IN     TIMER
+0008: 2833; --         SUB    TLIMIT
+0009: 6828; --         JPOS   OVER       ; time's up when timer > 300
+000A: 1800; --         LOADI  0
+000B: 9803; --         OUT    ADC
+000C: 9003; --         IN     ADC
+000D: 5014; --         SHIFT  -4
+000E: 1036; --         STORE  ADCVAL
+000F: 802A; --         CALL   SHOW
+0010: 0836; --         LOAD   ADCVAL
+0011: 2835; --         SUB    TARGET
+0012: 6016; --         JNEG   BELOW      ; ADCVAL < TARGET
+0013: 2832; --         SUB    THRESH
+0014: 6825; --         JPOS   MISS
+0015: 581A; --         JUMP   HIT
+0016: 0835; --         LOAD   TARGET
+0017: 2836; --         SUB    ADCVAL
+0018: 2832; --         SUB    THRESH
+0019: 6825; --         JPOS   MISS
+001A: 0837; --         LOAD   MATCHED
+001B: 6807; --         JPOS   MAIN       ; hold-off: must release before next point
+001C: 1801; --         LOADI  1
+001D: 1037; --         STORE  MATCHED
+001E: 0834; --         LOAD   SCORE
+001F: 3001; --         ADDI   1
+0020: 1034; --         STORE  SCORE
+0021: 9002; --         IN     TIMER
+0022: 3831; --         AND    MASK_FF
+0023: 1035; --         STORE  TARGET
+0024: 5807; --         JUMP   MAIN
+0025: 1800; -- MISS:   LOADI  0          ; outside tolerance: clear hold-off flag
+0026: 1037; --         STORE  MATCHED
+0027: 5807; --         JUMP   MAIN
+0028: 802A; -- OVER:   CALL   SHOW
+0029: 5828; --         JUMP   OVER
+002A: 0834; -- SHOW:   LOAD   SCORE
+002B: 9804; --         OUT    HEX_UP
+002C: 0835; --         LOAD   TARGET
+002D: 5008; --         SHIFT  8          ; move target into upper byte
+002E: 4036; --         OR     ADCVAL     ; merge: [TARGET | ADCVAL]
+002F: 9805; --         OUT    HEX_LO
+0030: 8800; --         RETURN
+0031: 00FF; -- MASK_FF: DW    255        ; 0x00FF -- mask for lower 8 bits
+0032: 0008; -- THRESH:  DW    8          ; match tolerance: +/-8 out of 256
+0033: 012C; -- TLIMIT:  DW    300        ; 30 seconds x 10 Hz = 300 ticks
+0034: 0000; -- SCORE:   DW    0
+0035: 0000; -- TARGET:  DW    0
+0036: 0000; -- ADCVAL:  DW    0
+0037: 0000; -- MATCHED: DW    0          ; 1 = currently inside match zone
+[0038..07FF] : 0000; -- [empty memory]
+END;

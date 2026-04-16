@@ -200,23 +200,27 @@ BEGIN
 					
 				WHEN STORE =>
 					adc_start <= '0';
-					CASE ch_count IS
+					-- The LTC2308 has a 1-conversion pipeline delay:
+						-- the result we read NOW is from the config sent in the
+						-- PREVIOUS frame.  At ch_count=N the previous config was
+						-- for channel (N+7)%8, so store into that buffer.
+						CASE ch_count IS
 						WHEN 0 =>
-							buf_ch1 <= adc_result;
+							buf_ch7 <= adc_result; -- prev cfg was CH7
 						WHEN 1 =>
-							buf_ch0 <= adc_result;
+							buf_ch0 <= adc_result; -- prev cfg was CH0
 						WHEN 2 =>
-							buf_ch7 <= adc_result;
+							buf_ch1 <= adc_result; -- prev cfg was CH1
 						WHEN 3 =>
-							buf_ch6 <= adc_result;
+							buf_ch2 <= adc_result; -- prev cfg was CH2
 						WHEN 4 =>
-							buf_ch5 <= adc_result;
+							buf_ch3 <= adc_result; -- prev cfg was CH3
 						WHEN 5 =>
-							buf_ch4 <= adc_result;
+							buf_ch4 <= adc_result; -- prev cfg was CH4
 						WHEN 6 =>
-							buf_ch3 <= adc_result;
+							buf_ch5 <= adc_result; -- prev cfg was CH5
 						WHEN 7 =>
-							buf_ch2 <= adc_result;
+							buf_ch6 <= adc_result; -- prev cfg was CH6
 						WHEN OTHERS =>
 							NULL;
 					END CASE;
