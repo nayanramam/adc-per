@@ -60,7 +60,7 @@ HEX_LO  EQU    5
 ; ============================================================
 ; Main measurement loop
 ; ============================================================
-MAIN
+MAIN:
         ; --- Read 1: measure V - V_IL (800 mV) ---
         ; Config = 2  (0b00_00_000_010): ttl_debug, CH0, ttl_input_0 (800 mV)
         ; For CH1 use 10 instead; for CH2 use 18, etc. (add 4 per channel)
@@ -94,7 +94,7 @@ MAIN
         OUT    HEX_LO
         JUMP   MAIN
 
-IS_LOW  ; ----- LOW: V < 800 mV -----
+IS_LOW: ; ----- LOW: V < 800 mV -----
         ; Show margin below V_IL: how much room to spare before the forbidden zone.
         LOADI  31           ; 0b0000011111: bottom 5 LEDs (valid low)
         OUT    LEDS
@@ -105,7 +105,7 @@ IS_LOW  ; ----- LOW: V < 800 mV -----
         OUT    HEX_LO
         JUMP   MAIN
 
-IS_HIGH ; ----- HIGH: V > 2000 mV -----
+IS_HIGH: ; ----- HIGH: V > 2000 mV -----
         ; Show margin above V_IH: how much room to spare above the threshold.
         LOADI  992          ; 0b1111100000: top 5 LEDs (valid high)
         OUT    LEDS
@@ -116,5 +116,5 @@ IS_HIGH ; ----- HIGH: V > 2000 mV -----
         JUMP   MAIN
 
 ; ---------- Variables ----------
-DIL     DW     0            ; V - 800  (signed)
-DIH     DW     0            ; V - 2000 (signed)
+DIL:    DW     0            ; V - 800  (signed)
+DIH:    DW     0            ; V - 2000 (signed)

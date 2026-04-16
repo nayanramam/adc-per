@@ -13,14 +13,14 @@ ORG 0
 
 ; IO address constants
 ADC     EQU    3
-HEX_UP  EQU    5
-HEX_LO  EQU    4
+HEX_UP  EQU    4
+HEX_LO  EQU    5
 
 
 ; TEST : TTL debug, CH0, input low threshold 
 ; Expected: signed mV offset from 0.8V threshold
 TEST_TTL_IN0:
-    LOADI   &B0000000000000010
+    LOADI   &B0000001100000111
     OUT     ADC
     CALL    WAIT_SINGLE
     IN      ADC
@@ -31,7 +31,7 @@ TEST_TTL_IN0:
     JUMP    TEST_TTL_IN0
 
 ERR_MISMATCH:
-    ; Show "FFFF" on lower digits to indicate error mode test failed
+    ; Show "DEAD" on lower digits to indicate error mode test failed
     LOAD    FAIL_CONST
     OUT     HEX_UP
     JUMP    ERR_MISMATCH
@@ -88,7 +88,7 @@ DELAY_COUNT:    DW 10000
 HOLD_TEMP:      DW &B0000000000000000
 DELAY_TEMP:     DW &B0000000000000000
 DEAD_CONST:     DW &B1101111010101101  ; 0xDEAD
-FAIL_CONST:     DW &B1111111111111111  ; 0xFFFF - shown if error test fails
+FAIL_CONST:     DW &B1101111010101101  ; 0xDEAD - shown if error test fails
 CD_TEMP:        DW &B0000000000000000
 
 ; Results

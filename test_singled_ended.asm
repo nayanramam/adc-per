@@ -13,16 +13,15 @@ ORG 0
 
 ; IO address constants
 ADC     EQU    3
-HEX_UP  EQU    4
-HEX_LO  EQU    5
+HEX_UP  EQU    4  ; lower 4 digits
+HEX_LO  EQU    5  ; upper 4 digits
 
 ; Send config once before the loop (VHDL latches it)
 ; Single-ended, CH0, no TTL config needed
-    LOADI   &B0000000000000000
+    LOADI   &B0000000000001000
     OUT     ADC
 
 ; LIVE VOLTAGE DISPLAY: CH0 continuous read
-; Display shows live hex mV value: GND=0000, 3.3V=0CE4, 4.096V=1000
 LIVE_DISPLAY:
     CALL    WAIT_SINGLE
     IN      ADC
@@ -55,7 +54,7 @@ DELAY_COUNT:    DW 10000
 HOLD_TEMP:      DW &B0000000000000000
 DELAY_TEMP:     DW &B0000000000000000
 DEAD_CONST:     DW &B1101111010101101  ; 0xDEAD
-FAIL_CONST:     DW &B1111111111111111  ; 0xFFFF - shown if error test fails
+FAIL_CONST:     DW &B1101111010101101  ; 0xDEAD - shown if error test fails
 CD_TEMP:        DW &B0000000000000000
 
 ; Results

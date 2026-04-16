@@ -65,7 +65,7 @@ HEX_LO  EQU    5
     OUT    ADC
 
 ; ---------- Main measurement loop ----------
-MAIN    IN     ADC     ; read signed 16-bit differential result
+MAIN:   IN     ADC     ; read signed 16-bit differential result
         STORE  ADCRAW  ; save for the calibration display on HEX5-HEX4
 
         ; Apply voltage-offset to get a value proportional to degrees
@@ -79,7 +79,7 @@ MAIN    IN     ADC     ; read signed 16-bit differential result
         LOADI  0
         STORE  CELSIUS
 
-DIVLP   LOAD   REMAIN
+DIVLP:  LOAD   REMAIN
         SUB    DIVISOR
         JNEG   DIVDN   ; remainder < DIVISOR: quotient is complete
         STORE  REMAIN
@@ -88,28 +88,28 @@ DIVLP   LOAD   REMAIN
         STORE  CELSIUS
         JUMP   DIVLP
 
-DIVDN   ; Clamp to 99 °C (two-digit BCD display limit)
+DIVDN:  ; Clamp to 99 °C (two-digit BCD display limit)
         LOAD   CELSIUS
         SUB    NINETYN
         JPOS   CLAMPH  ; > 99: cap at 99
         JUMP   SHOW    ; 0..99: pass through unchanged
 
-CLAMPL  LOADI  0
+CLAMPL: LOADI  0
         STORE  CELSIUS
         JUMP   SHOW
 
-CLAMPH  LOAD   NINETYN
+CLAMPH: LOAD   NINETYN
         STORE  CELSIUS
         ; fall through to SHOW
 
 ; ---------- BCD conversion and display ----------
 ; Convert CELSIUS (0-99) to two decimal digits and build display word.
-SHOW    LOADI  0
+SHOW:   LOADI  0
         STORE  TENS
         LOAD   CELSIUS
         STORE  REMAIN  ; reuse REMAIN as BCD countdown
 
-TENLP   LOAD   REMAIN
+TENLP:   LOAD   REMAIN
         SUB    TEN
         JNEG   TENDN   ; REMAIN < 10: TENS is done
         STORE  REMAIN  ; REMAIN -= 10
@@ -118,7 +118,7 @@ TENLP   LOAD   REMAIN
         STORE  TENS
         JUMP   TENLP
 
-TENDN   ; TENS  = tens digit (0-9)
+TENDN:  ; TENS  = tens digit (0-9)
         ; REMAIN = units digit (0-9)
 
         ; HEX5-HEX4: raw ADC low byte for calibration reference
@@ -150,18 +150,18 @@ TENDN   ; TENS  = tens digit (0-9)
 ; Then:  DIVISOR = (ADC2 - ADC1) / (T2_C - T1_C)
 ;        OFFSET  = ADC1 - DIVISOR * T1_C
 ; Default values are for an LM35 (10 mV/°C, 0 V at 0 °C):
-OFFSET  DW     0     ; ** ADC counts at 0 °C (voltage offset / 1mV) **
-DIVISOR DW     10    ; ** ADC counts per degree Celsius             **
+OFFSET:  DW     0     ; ** ADC counts at 0 °C (voltage offset / 1mV) **
+DIVISOR: DW     10    ; ** ADC counts per degree Celsius             **
 
 ; ---------- Other constants ----------
-MASK_FF DW     255   ; 0x00FF -- mask to low byte
-MASK_0C DW     12    ; 0x000C -- 'C' character on HEX0 (7-segment hex C)
-TEN     DW     10    ; for BCD tens extraction
-NINETYN DW     99    ; upper display clamp
+MASK_FF: DW     255   ; 0x00FF -- mask to low byte
+MASK_0C: DW     12    ; 0x000C -- 'C' character on HEX0 (7-segment hex C)
+TEN:     DW     10    ; for BCD tens extraction
+NINETYN: DW     99    ; upper display clamp
 
 ; ---------- Variables ----------
-ADCRAW  DW     0     ; raw signed ADC differential reading
-CELSIUS DW     0     ; computed temperature in whole degrees C
-TENS    DW     0     ; BCD tens digit
-REMAIN  DW     0     ; scratch: division remainder / BCD units
-DWORD   DW     0     ; scratch: partial display word
+ADCRAW:  DW     0     ; raw signed ADC differential reading
+CELSIUS: DW     0     ; computed temperature in whole degrees C
+TENS:    DW     0     ; BCD tens digit
+REMAIN:  DW     0     ; scratch: division remainder / BCD units
+DWORD:   DW     0     ; scratch: partial display word

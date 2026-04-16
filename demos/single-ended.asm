@@ -56,7 +56,7 @@ HEX_LO  EQU    5
     STORE  TARGET
 
 ; ---------- Main game loop ----------
-MAIN    IN     TIMER
+MAIN:   IN     TIMER
         SUB    TLIMIT
         JPOS   OVER       ; time's up when timer > 300
 
@@ -82,15 +82,15 @@ MAIN    IN     TIMER
         JPOS   MISS
         JUMP   HIT
 
-BELOW   ; ADCVAL < TARGET: check TARGET - ADCVAL <= THRESH
+BELOW:  ; ADCVAL < TARGET: check TARGET - ADCVAL <= THRESH
         LOAD   TARGET
         SUB    ADCVAL
         SUB    THRESH
         JPOS   MISS
 
-HIT     ; Within tolerance -- was already matched last cycle?
+HIT:    ; Within tolerance -- was already matched last cycle?
         LOAD   MATCHED
-        JNZ    MAIN       ; hold-off: must release before next point
+        JPOS   MAIN       ; hold-off: must release before next point
 
         ; Register the new match
         LOADI  1
@@ -106,18 +106,18 @@ HIT     ; Within tolerance -- was already matched last cycle?
 
         JUMP   MAIN
 
-MISS    LOADI  0          ; outside tolerance: clear hold-off flag
+MISS:   LOADI  0          ; outside tolerance: clear hold-off flag
         STORE  MATCHED
         JUMP   MAIN
 
 ; ---------- Game over: freeze on final score ----------
-OVER    CALL   SHOW
+OVER:   CALL   SHOW
         JUMP   OVER
 
 ; ---------- Display subroutine ----------
 ; Writes score to HEX5-HEX4 and packs
 ; target (high byte) | ADC value (low byte) into HEX3-HEX0.
-SHOW    LOAD   SCORE
+SHOW:   LOAD   SCORE
         OUT    HEX_UP
 
         LOAD   TARGET
@@ -127,12 +127,12 @@ SHOW    LOAD   SCORE
         RETURN
 
 ; ---------- Constants ----------
-MASK_FF DW     255        ; 0x00FF -- mask for lower 8 bits
-THRESH  DW     8          ; match tolerance: +/-8 out of 256
-TLIMIT  DW     300        ; 30 seconds x 10 Hz = 300 ticks
+MASK_FF: DW    255        ; 0x00FF -- mask for lower 8 bits
+THRESH:  DW    8          ; match tolerance: +/-8 out of 256
+TLIMIT:  DW    300        ; 30 seconds x 10 Hz = 300 ticks
 
 ; ---------- Variables ----------
-SCORE   DW     0
-TARGET  DW     0
-ADCVAL  DW     0
-MATCHED DW     0          ; 1 = currently inside match zone
+SCORE:   DW    0
+TARGET:  DW    0
+ADCVAL:  DW    0
+MATCHED: DW    0          ; 1 = currently inside match zone
