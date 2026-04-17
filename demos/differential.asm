@@ -1,41 +1,28 @@
 ; ============================================================
-; Differential ADC Demo -- Digital Thermometer
+; Differential ADC Demo -- Simulated Temperature Sensor
 ; ============================================================
 ;
-; Hardware: Connect a PTAT temperature sensor across two ADC channels.
-;   CH0 (+) -- sensor voltage output (higher potential)
-;   CH1 (-) -- sensor reference / second terminal (lower potential)
+; Hardware: Two potentiometers connected to the ADC:
+;   CH0 -- 10k potentiometer (acts as the "sensor" input)
+;   CH2 -- 1k  potentiometer (acts as the "reference" input)
 ;
-; The ADC peripheral continuously samples both channels and returns
-; the signed 16-bit difference: result = V_CH0 - V_CH1 (in ADC counts).
+; The ADC peripheral continuously samples both channels.
+; In differential mode the result is:  V_CH0 - V_CH2 (in ADC counts).
 ;
-; Temperature formula (integer arithmetic, no multiply/divide in SCOMP):
+; The voltage difference is mapped to a simulated temperature:
+;   T_celsius = (ADC_diff - OFFSET) / DIVISOR
 ;
-;   T_celsius = (ADC_counts - OFFSET) / DIVISOR
+; With OFFSET=0 and DIVISOR=41 the full 0-4095 count range maps to 0-99 C.
+;   - Turn the CH0 (10k) pot UP   to raise the temperature.
+;   - Turn the CH2 (1k)  pot UP   to lower the temperature.
+;   - When both pots produce the same voltage the reading is 0 C.
+;   - Negative differences are clamped to 0 C; max is clamped to 99 C.
 ;
-;   where OFFSET is the ADC count corresponding to 0 °C,
-;   and DIVISOR is the number of ADC counts per degree Celsius.
-;
-; *** CALIBRATION -- fill in OFFSET and DIVISOR at the bottom ***
-;
-;   Sensor                     OFFSET   DIVISOR
-;   LM35  (10 mV/°C, 0V@0°C)     0        10
-;   LM61  (10 mV/°C, 600mV@25°C) 60       10   (600mV/1mV per count = 60 @ 0°C... wait
-;                                                  LM61: 600mV at 25°C, slope 10mV/°C
-;                                                  0°C: 600 - 25*10 = 350mV -> OFFSET=35... use your measured zero)
-;   PTAT  (1 mV/K output)         273       1   (273 K offset from 0 °C)
-;   Custom: measure ADC at two known temperatures T1, T2:
-;            DIVISOR = (ADC2 - ADC1) / (T2 - T1)
-;            OFFSET  = ADC1 - DIVISOR * T1
-;
-; The LTC2308 ADC reference is 4.096 V, so 1 LSB = 1 mV in single-ended mode.
-; In differential mode the counts represent mV of differential voltage directly.
-;
-; ADC config word for differential CH0(+) vs CH1(-):
+; ADC config word for differential CH0(+) vs CH2(-):
 ;   config[1:0] = 01  (differential mode)
 ;   config[4:2] = 000 (CH0, positive channel)
-;   config[7:5] = 001 (CH1, negative channel)
-;   => config = 0b 0000 0 001 000 01 = 0x0021 = 33 decimal
+;   config[7:5] = 010 (CH2, negative channel)
+;   => config = 0b 0000 0 010 000 01 = 0x0041 = 65 decimal
 ;
 ; Display layout:
 ;   HEX5-HEX4  raw ADC low byte (hex) -- live calibration reference
@@ -43,8 +30,8 @@
 ;   HEX2       temperature tens digit  (decimal)
 ;   HEX1       temperature units digit (decimal)
 ;   HEX0       'C' (Celsius indicator, 0xC on 7-segment shows as C)
-;   Example: 25 °C → HEX shows  [FA]  [0 2 5 C]
-;                                 ^raw ADC=0xFA=250 counts (for LM35)
+;   Example: 25 C  -> HEX shows  [FA]  [0 2 5 C]
+;                                  ^raw ADC low byte = 0xFA
 ;
 ; IO address map:
 ;   0x003  ADC    (write 16-bit config; read signed 16-bit differential)
@@ -60,8 +47,8 @@ HEX_LO  EQU    5
 
 ; ---------- Initialization ----------
 ; Write the differential config word once; the ADC peripheral latches
-; it combinationally and immediately starts using it in the round-robin.
-    LOADI  33          ; 0x21 = differential mode, CH0(+), CH1(-)
+; it and the combinational output path uses it immediately.
+    LOADI  65          ; 0x41 = differential mode, CH0(+), CH2(-)
     OUT    ADC
 
 ; ---------- Main measurement loop ----------
@@ -144,14 +131,12 @@ TENDN:  ; TENS  = tens digit (0-9)
         JUMP   MAIN
 
 ; ============================================================
-; CALIBRATION CONSTANTS -- *** CHANGE THESE FOR YOUR SENSOR ***
+; CALIBRATION CONSTANTS
 ; ============================================================
-; Measure ADC_raw (from HEX5-HEX4) at two known temperatures.
-; Then:  DIVISOR = (ADC2 - ADC1) / (T2_C - T1_C)
-;        OFFSET  = ADC1 - DIVISOR * T1_C
-; Default values are for an LM35 (10 mV/°C, 0 V at 0 °C):
-OFFSET:  DW     0     ; ** ADC counts at 0 °C (voltage offset / 1mV) **
-DIVISOR: DW     10    ; ** ADC counts per degree Celsius             **
+; DIVISOR=41 maps the full differential range (0..4095) to 0..99 C.
+; OFFSET=0 means equal pot voltages read as 0 C.
+OFFSET:  DW     0     ; ADC counts at 0 C
+DIVISOR: DW     41    ; ADC counts per degree Celsius
 
 ; ---------- Other constants ----------
 MASK_FF: DW     255   ; 0x00FF -- mask to low byte

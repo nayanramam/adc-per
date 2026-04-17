@@ -5,7 +5,7 @@ ADDRESS_RADIX=HEX;
 DATA_RADIX=HEX;
 
 CONTENT BEGIN
-0000: 1821; --     LOADI  33          ; 0x21 = differential mode, CH0(+), CH1(-)
+0000: 1841; --     LOADI  65          ; 0x41 = differential mode, CH0(+), CH2(-)
 0001: 9803; --     OUT    ADC
 0002: 9003; -- MAIN:   IN     ADC     ; read signed 16-bit differential result
 0003: 1038; --         STORE  ADCRAW  ; save for the calibration display on HEX5-HEX4
@@ -55,8 +55,8 @@ CONTENT BEGIN
 002F: 2035; --         ADD    MASK_0C   ; add 0x000C → 0x0TUC
 0030: 9805; --         OUT    HEX_LO
 0031: 5802; --         JUMP   MAIN
-0032: 0000; -- OFFSET:  DW     0     ; ** ADC counts at 0 °C (voltage offset / 1mV) **
-0033: 000A; -- DIVISOR: DW     10    ; ** ADC counts per degree Celsius             **
+0032: 0000; -- OFFSET:  DW     0     ; ADC counts at 0 C
+0033: 0029; -- DIVISOR: DW     41    ; ADC counts per degree Celsius
 0034: 00FF; -- MASK_FF: DW     255   ; 0x00FF -- mask to low byte
 0035: 000C; -- MASK_0C: DW     12    ; 0x000C -- 'C' character on HEX0 (7-segment hex C)
 0036: 000A; -- TEN:     DW     10    ; for BCD tens extraction

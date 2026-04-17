@@ -29,11 +29,10 @@
 ;   bits [1:0] = 00   (single-ended mode)
 ;   => config = 0x0000
 ;
-; SHIFT instruction operand encoding (SCOMP):
-;   bit 4  : direction  0=left  1=right
-;   bits[3:0]: distance
-;   SHIFT  8 = left  shift by 8  (0b01000)
-;   SHIFT 20 = right shift by 4  (0b10100)
+; SHIFT instruction operand encoding (SCOMP, sign-magnitude %s5):
+;   Positive operand = left shift,  negative = right shift.
+;   SHIFT  8 = left  shift by 8
+;   SHIFT -4 = right shift by 4
 
     ORG    0
 
@@ -66,7 +65,7 @@ MAIN:   IN     TIMER
 
         ; Read 12-bit ADC result, scale to 8 bits (right-shift 4)
         IN     ADC
-        SHIFT  20
+        SHIFT  -4
         STORE  ADCVAL
 
         ; Refresh display
