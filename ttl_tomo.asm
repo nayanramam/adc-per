@@ -12,7 +12,6 @@ MAIN:
     STORE   SW_RAW
     AND     MASK_SW9
     JZERO   NORMAL_OP
-
     ; SW9 up — send invalid config, hardware returns 0xDEAD
     LOAD    MODE_INVALID
     OUT     ADC
@@ -56,19 +55,14 @@ SEND_CONFIG:
     OUT     LEDs
     JUMP    MAIN
 
-; CONSTANTS & DATA
 CFG_IN_LO:   DW  &H0010
 CFG_OUT_LO:  DW  &H1010
 CFG_IN_HI:   DW  &H2010
 CFG_OUT_HI:  DW  &H3010
 
 MODE_INVALID: DW &B0000000000011000
-
-; Switch masks
 MASK_SW9:    DW  &B0000001000000000   ; isolate SW9
 MASK_SW10:   DW  &B0000000000000011   ; isolate SW[1:0]
-
-; Scratch
 SW_RAW:      DW  0
 TTL_SEL:     DW  0
 CONFIG_WORD: DW  0
