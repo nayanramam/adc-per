@@ -1,0 +1,71 @@
+WIDTH=16;
+DEPTH=2048;
+
+ADDRESS_RADIX=HEX;
+DATA_RADIX=HEX;
+
+CONTENT BEGIN
+0000: 9000; --     IN      Switches
+0001: 3837; --     AND     MASK_SW10       ; isolate bits [1:0]
+0002: 103A; --     STORE   TTL_SEL
+0003: 7009; --     JZERO   USE_IN_LO       ; SW=00 => Input LOW  (0.8V)
+0004: 37FF; --     ADDI    -1
+0005: 700B; --     JZERO   USE_OUT_LO      ; SW=01 => Output LOW (0.4V)
+0006: 37FF; --     ADDI    -1
+0007: 700D; --     JZERO   USE_IN_HI       ; SW=10 => Input HIGH (2.0V)
+0008: 580F; --     JUMP    USE_OUT_HI      ; SW=11 => Output HIGH (2.7V)
+0009: 0831; --     LOAD    CFG_IN_LO
+000A: 5810; --     JUMP    SEND_CONFIG
+000B: 0832; --     LOAD    CFG_OUT_LO
+000C: 5810; --     JUMP    SEND_CONFIG
+000D: 0833; --     LOAD    CFG_IN_HI
+000E: 5810; --     JUMP    SEND_CONFIG
+000F: 0834; --     LOAD    CFG_OUT_HI
+0010: 103B; --     STORE   CONFIG_WORD
+0011: 083B; --     LOAD    CONFIG_WORD
+0012: 801C; --     CALL    CHECK_CONFIG    ; freezes with DEAD on both displays if invalid
+0013: 9803; --     OUT     ADC
+0014: 8026; --     CALL    WAIT_ADC
+0015: 9003; --     IN      ADC
+0016: 9804; --     OUT     HEX_UP
+0017: 083A; --     LOAD    TTL_SEL
+0018: 9805; --     OUT     HEX_LO
+0019: 9801; --     OUT     LEDs
+001A: 802A; --     CALL    DELAY
+001B: 5800; --     JUMP    MAIN
+001C: 103C; --     STORE   CC_TEMP
+001D: 3835; --     AND     MASK_MODE
+001E: 2836; --     SUB     MODE_ERR
+001F: 7022; --     JZERO   CONFIG_BAD
+0020: 083C; --     LOAD    CC_TEMP
+0021: 8800; --     RETURN
+0022: 0838; --     LOAD    DEAD_CONST
+0023: 9804; --     OUT     HEX_UP          ; lower 4 digits show DEAD
+0024: 9805; --     OUT     HEX_LO          ; upper 4 digits show DEAD
+0025: 5822; --     JUMP    CONFIG_BAD      ; freeze until hard reset
+0026: 181E; --     LOADI   30
+0027: 37FF; --     ADDI    -1
+0028: 6827; --     JPOS    WAIT_LP
+0029: 8800; --     RETURN
+002A: 0839; --     LOAD    DELAY_COUNT
+002B: 103D; --     STORE   DELAY_TEMP
+002C: 083D; --     LOAD    DELAY_TEMP
+002D: 37FF; --     ADDI    -1
+002E: 103D; --     STORE   DELAY_TEMP
+002F: 682C; --     JPOS    DELAY_LP
+0030: 8800; --     RETURN
+0031: 0010; -- CFG_IN_LO:  DW  &H0010
+0032: 1010; -- CFG_OUT_LO: DW  &H1010
+0033: 2010; -- CFG_IN_HI:  DW  &H2010
+0034: 3010; -- CFG_OUT_HI: DW  &H3010
+0035: 0018; -- MASK_MODE:  DW  &B0000000000011000
+0036: 0018; -- MODE_ERR:   DW  &B0000000000011000
+0037: 0003; -- MASK_SW10:  DW  &B0000000000000011   ; isolate SW[1:0]
+0038: DEAD; -- DEAD_CONST: DW  &HDEAD
+0039: 1388; -- DELAY_COUNT: DW 5000
+003A: 0000; -- TTL_SEL:    DW  0
+003B: 0000; -- CONFIG_WORD: DW 0
+003C: 0000; -- CC_TEMP:    DW  0
+003D: 0000; -- DELAY_TEMP: DW  0
+[003E..07FF] : 0000; -- [empty memory]
+END;

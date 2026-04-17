@@ -39,8 +39,8 @@
 ; ---------- IO address constants ----------
 TIMER   EQU    2
 ADC     EQU    3
-HEX_UP  EQU    4
-HEX_LO  EQU    5
+HEX_RIGHT  EQU    4
+HEX_LEFT  EQU    5
 
 ; ---------- Initialization ----------
     LOADI  0
@@ -51,7 +51,6 @@ HEX_LO  EQU    5
     ; Seed the first target from the timer (likely 0 at start,
     ; giving a clear "turn the pot to minimum" first challenge)
     IN     TIMER
-    AND    MASK_FF
     STORE  TARGET
 
 ; ---------- Main game loop ----------
@@ -117,12 +116,12 @@ OVER:   CALL   SHOW
 ; Writes score to HEX5-HEX4 and packs
 ; target (high byte) | ADC value (low byte) into HEX3-HEX0.
 SHOW:   LOAD   SCORE
-        OUT    HEX_UP
+        OUT    HEX_RIGHT
 
         LOAD   TARGET
         SHIFT  8          ; move target into upper byte
         OR     ADCVAL     ; merge: [TARGET | ADCVAL]
-        OUT    HEX_LO
+        OUT    HEX_LEFT
         RETURN
 
 ; ---------- Constants ----------
