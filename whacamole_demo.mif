@@ -1,0 +1,39 @@
+WIDTH=16;
+DEPTH=2048;
+
+ADDRESS_RADIX=HEX;
+DATA_RADIX=HEX;
+
+CONTENT BEGIN
+0000: 1800; --     LOADI   0
+0001: 9802; --     OUT     TIMER
+0002: 9803; --     OUT     ADC
+0003: 9804; --     OUT     HEX_RIGHT
+0004: 9805; --     OUT     HEX_LEFT
+0005: 9000; --     IN      SWITCHES
+0006: 6808; --     JPOS    MAIN
+0007: 5805; --     JUMP    LOOP1
+0008: 9000; --     IN      SWITCHES
+0009: 7808; --     JNZ     MAIN
+000A: 9002; --     IN      TIMER
+000B: 9804; --     OUT     HEX_RIGHT
+000C: 101D; --     STORE   MATCH_VALUE
+000D: 9003; --     IN      ADC
+000E: 281D; --     SUB     MATCH_VALUE
+000F: 37CE; --     ADDI    -50
+0010: 680D; --     JPOS    LOOP2
+0011: 3064; --     ADDI    100
+0012: 600D; --     JNEG    LOOP2
+0013: 5814; --     JUMP    SUCCESS
+0014: 081C; --     LOAD    SCORE
+0015: 3001; --     ADDI    1
+0016: 9805; --     OUT     HEX_LEFT
+0017: 101C; --     STORE   SCORE
+0018: 1800; --     LOADI   0
+0019: 9804; --     OUT     HEX_RIGHT
+001A: 9802; --     OUT     TIMER
+001B: 5805; --     JUMP    LOOP1
+001C: 0000; -- SCORE:   DW 0
+001D: 0000; -- MATCH_VALUE: DW 0
+[001E..07FF] : 0000; -- [empty memory]
+END;
