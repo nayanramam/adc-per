@@ -21,7 +21,7 @@ INIT:
 ; Wait for any switch to be high
 LOOP1:
     IN      SWITCHES
-    JPOS    MAIN
+    JNZ     MAIN
     JUMP    LOOP1
 	OUT     TIMER
 ; Run timer until switches are all low again, using timer value as random number to match
