@@ -16,7 +16,6 @@ MAIN:
     ; SW9 up — send invalid config, hardware returns 0xDEAD
     LOAD    MODE_INVALID
     OUT     ADC
-    CALL    WAIT_ADC ;needed because doing OUT then IN immediately takes stale value instead of DEAD 
     IN      ADC
     OUT     HEX_RIGHT
     JUMP    MAIN
@@ -48,20 +47,12 @@ SEND_CONFIG:
     STORE   CONFIG_WORD
     LOAD    CONFIG_WORD
     OUT     ADC
-    CALL    WAIT_ADC
     IN      ADC
     OUT     HEX_RIGHT       ; signed mV difference from threshold
     LOAD    TTL_SEL
     OUT     HEX_LEFT        ; TTL_SEL (0/1/2/3)
     OUT     LEDs
     JUMP    MAIN
-
-WAIT_ADC:
-    LOADI   30
-WAIT_LP:
-    ADDI    -1
-    JPOS    WAIT_LP
-    RETURN
 
 CFG_IN_LO:    DW  &B0000000000000010
 CFG_OUT_LO:   DW  &B0000000100000010
