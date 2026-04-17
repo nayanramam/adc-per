@@ -15,7 +15,6 @@ HEX_LEFT   EQU    5
 ; Initialize timer, display, adc config
 INIT: 
     LOADI   0
-    OUT     TIMER
     OUT     ADC
     OUT     HEX_RIGHT
     OUT     HEX_LEFT
@@ -24,12 +23,15 @@ LOOP1:
     IN      SWITCHES
     JPOS    MAIN
     JUMP    LOOP1
+	OUT     TIMER
 ; Run timer until switches are all low again, using timer value as random number to match
 MAIN:
     IN      SWITCHES
     JNZ     MAIN
     IN      TIMER
-    MULI    2
+	SHIFT   6
+	ADDI    7
+	AND     MASK
     OUT     HEX_RIGHT
     STORE   MATCH_VALUE
     OUT     TIMER
@@ -59,7 +61,7 @@ SUCCESS:
     JUMP    LOOP1
 ; If time is up, display score and end game
 GAME_OVER:
-    LOADI   0
+    LOAD    WIN
     OUT     HEX_RIGHT
     JUMP    GAME_OVER
 
@@ -67,4 +69,8 @@ GAME_OVER:
 SCORE:   DW 0
 MATCH_VALUE: DW 0
 TIME_TRACKER: DW 0
-END_TIME: DW 300 ; 30 seconds
+END_TIME: DW 81 ; 8.1 seconds (KOBE)
+WIN: DW &HBEEF
+
+; Constants
+MASK: DW &H0FFF
