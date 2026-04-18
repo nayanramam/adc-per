@@ -1,8 +1,10 @@
-; [1:0] = IO Mode
-; [4:2] = Channel Address Pos
-; [7:5] = Channel Address Neg
-; [9:8] = TTL Configuration
-; Config word: &B XXXXXX XX 010 000 01
+;demo displays differential mode working between channel 0 (pos) and channel 2 (neg)
+
+;[1:0] = IO Mode
+;[4:2] = Channel Address Pos
+;[7:5] = Channel Address Neg
+;[9:8] = TTL Configuration
+;Config word: &B XXXXXX XX 010 000 01
 
 ORG     0
 
