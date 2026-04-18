@@ -24,12 +24,12 @@ ENTITY ADC IS
 END ADC;
 
 ARCHITECTURE arch OF ADC IS
-	-- SCOMP Communication Enum Types
+	--Configuration Enum Types
 	TYPE MODE_TYPE IS ( sgl_end, diff, ttl_debug, err );
 	TYPE CHANNEL_TYPE IS ( ch0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch_error);
 	TYPE TTL_CONFIG_TYPE IS ( ttl_input_0, ttl_input_1, ttl_output_0, ttl_output_1, ttl_error );
 	
-	-- SCOMP Communication Signals	
+	-- Configuration Signals	
 	SIGNAL channel  : CHANNEL_TYPE;
 	SIGNAL channel_neg : CHANNEL_TYPE;
 	SIGNAL io_mode  : MODE_TYPE;
@@ -39,7 +39,7 @@ ARCHITECTURE arch OF ADC IS
 	TYPE ADC_STATE IS (IDLE, CONVERTING, WAIT_BUSY, STORE);
 	SIGNAL state_rnd  : ADC_STATE;
 
-	-- Combinational sample path
+	--Internal signals for differential and ttl modes
 	SIGNAL vpos         : STD_LOGIC_VECTOR(11 DOWNTO 0);
 	SIGNAL vneg         : STD_LOGIC_VECTOR(11 DOWNTO 0);
 	SIGNAL sample_diff  : STD_LOGIC_VECTOR(15 DOWNTO 0);
@@ -47,6 +47,7 @@ ARCHITECTURE arch OF ADC IS
 
 	-- Latch for Config
 	SIGNAL config_data_lat : STD_LOGIC_VECTOR(15 DOWNTO 0);
+	
 	-- Reg for Output
 	SIGNAL adc_data_reg : STD_LOGIC_VECTOR(15 DOWNTO 0);
 
