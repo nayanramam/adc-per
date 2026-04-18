@@ -10,46 +10,52 @@ CONTENT BEGIN
 0002: 9804; --     OUT     HEX_RIGHT
 0003: 9805; --     OUT     HEX_LEFT
 0004: 9000; --     IN      SWITCHES
-0005: 6808; --     JPOS    MAIN
-0006: 5804; --     JUMP    LOOP1
-0007: 9802; -- 	OUT     TIMER
-0008: 9000; --     IN      SWITCHES
-0009: 7808; --     JNZ     MAIN
-000A: 9002; --     IN      TIMER
-000B: 5006; -- 	SHIFT   6
-000C: 3007; -- 	ADDI    7
-000D: 382D; -- 	AND     MASK
-000E: 9804; --     OUT     HEX_RIGHT
-000F: 1029; --     STORE   MATCH_VALUE
-0010: 9802; --     OUT     TIMER
-0011: 9003; --     IN      ADC
-0012: 2829; --     SUB     MATCH_VALUE
-0013: 37CE; --     ADDI    -50
-0014: 6811; --     JPOS    LOOP2
-0015: 3064; --     ADDI    100
-0016: 6011; --     JNEG    LOOP2
-0017: 5818; --     JUMP    SUCCESS
-0018: 9002; --     IN      TIMER
-0019: 202A; --     ADD     TIME_TRACKER
-001A: 102A; --     STORE   TIME_TRACKER
-001B: 282B; --     SUB     END_TIME
-001C: 6825; --     JPOS    GAME_OVER
-001D: 0828; --     LOAD    SCORE
-001E: 3001; --     ADDI    1
-001F: 9805; --     OUT     HEX_LEFT
-0020: 1028; --     STORE   SCORE
-0021: 1800; --     LOADI   0
-0022: 9804; --     OUT     HEX_RIGHT
-0023: 9802; --     OUT     TIMER
-0024: 5804; --     JUMP    LOOP1
-0025: 082C; --     LOAD    WIN
-0026: 9804; --     OUT     HEX_RIGHT
-0027: 5825; --     JUMP    GAME_OVER
-0028: 0000; -- SCORE:   DW 0
-0029: 0000; -- MATCH_VALUE: DW 0
-002A: 0000; -- TIME_TRACKER: DW 0
-002B: 0051; -- END_TIME: DW 81 ; 8.1 seconds (KOBE)
-002C: BEEF; -- WIN: DW &HBEEF
-002D: 0FFF; -- MASK: DW &H0FFF
-[002E..07FF] : 0000; -- [empty memory]
+0005: 7808; --     JNZ     MAIN
+0006: 8029; --     CALL    DELAY
+0007: 5804; --     JUMP    LOOP1
+0008: 9802; -- 	OUT     TIMER
+0009: 9000; --     IN      SWITCHES
+000A: 7809; --     JNZ     LOOP3
+000B: 9002; --     IN      TIMER
+000C: 5006; -- 	SHIFT   6
+000D: 3007; -- 	ADDI    7
+000E: 3833; -- 	AND     MASK
+000F: 9804; --     OUT     HEX_RIGHT
+0010: 102F; --     STORE   MATCH_VALUE
+0011: 9802; --     OUT     TIMER
+0012: 9003; --     IN      ADC
+0013: 282F; --     SUB     MATCH_VALUE
+0014: 37CE; --     ADDI    -50
+0015: 6812; --     JPOS    LOOP2
+0016: 3064; --     ADDI    100
+0017: 6012; --     JNEG    LOOP2
+0018: 5819; --     JUMP    SUCCESS
+0019: 9002; --     IN      TIMER
+001A: 2030; --     ADD     TIME_TRACKER
+001B: 1030; --     STORE   TIME_TRACKER
+001C: 2831; --     SUB     END_TIME
+001D: 6826; --     JPOS    GAME_OVER
+001E: 082E; --     LOAD    SCORE
+001F: 3001; --     ADDI    1
+0020: 9805; --     OUT     HEX_LEFT
+0021: 102E; --     STORE   SCORE
+0022: 1800; --     LOADI   0
+0023: 9804; --     OUT     HEX_RIGHT
+0024: 9802; --     OUT     TIMER
+0025: 5804; --     JUMP    LOOP1
+0026: 0832; --     LOAD    WIN
+0027: 9804; --     OUT     HEX_RIGHT
+0028: 5826; --     JUMP    GAME_OVER
+0029: 9802; -- 	OUT    TIMER
+002A: 9002; -- 	IN     TIMER
+002B: 37FF; -- 	ADDI   -1
+002C: 602A; -- 	JNEG   WaitingLoop
+002D: 8800; -- 	RETURN 
+002E: 0000; -- SCORE:   DW 0
+002F: 0000; -- MATCH_VALUE: DW 0
+0030: 0000; -- TIME_TRACKER: DW 0
+0031: 0051; -- END_TIME: DW 81 ; 8.1 seconds (KOBE)
+0032: BEEF; -- WIN: DW &HBEEF
+0033: 0FFF; -- MASK: DW &H0FFF
+[0034..07FF] : 0000; -- [empty memory]
 END;

@@ -1,4 +1,8 @@
 ; Whacamole demo
+; Game where the user must match the digital value on the right
+; seven segment display with the analog value on potentiometer,
+; read from the ADC in single-ended mode.
+; The objective is to get as many matches as possible in 8.1 seconds.
 ;
 ; Config word: &B0000000000000000
 ;   [1:0] = 00  -> single-ended mode
@@ -22,12 +26,14 @@ INIT:
 LOOP1:
     IN      SWITCHES
     JNZ     MAIN
+    CALL    DELAY
     JUMP    LOOP1
-	OUT     TIMER
 ; Run timer until switches are all low again, using timer value as random number to match
 MAIN:
+	OUT     TIMER
+LOOP3:
     IN      SWITCHES
-    JNZ     MAIN
+    JNZ     LOOP3
     IN      TIMER
 	SHIFT   6
 	ADDI    7
@@ -64,6 +70,15 @@ GAME_OVER:
     LOAD    WIN
     OUT     HEX_RIGHT
     JUMP    GAME_OVER
+
+; Delay subroutine
+DELAY:
+	OUT    TIMER
+WaitingLoop:
+	IN     TIMER
+	ADDI   -1
+	JNEG   WaitingLoop
+	RETURN 
 
 ; Variables
 SCORE:   DW 0
