@@ -14,13 +14,11 @@ ENTITY ADC IS
 		-- R/W TO SCOMP
         adc_data  : INOUT STD_LOGIC_VECTOR(15 DOWNTO 0);
 
-		-- ADC LTC2308 Controller Info Signals
+		-- ADC LTC2308 Controller Signals
 		adc_busy   : IN STD_LOGIC;
 		adc_start  : OUT STD_LOGIC;
 		adc_result : IN STD_LOGIC_VECTOR(11 DOWNTO 0);
 		cfg_word   : OUT STD_LOGIC_VECTOR(5 DOWNTO 0)
-
-
 
 	);
 END ADC;
@@ -96,7 +94,7 @@ BEGIN
 				ch7 WHEN "111",
 				ch_error WHEN OTHERS;
 
-	-- Combinationally ttl configuration based on config			   
+	-- Combinationally select ttl configuration based on config			   
 	WITH config_data_lat(9 DOWNTO 8) SELECT
 		ttl_config <=   ttl_input_0   WHEN "00",
 					ttl_output_0       WHEN "01",
@@ -115,7 +113,6 @@ BEGIN
 		        buf_ch6 WHEN ch6,
 		        buf_ch7 WHEN ch7,
 		        "000000000000" WHEN OTHERS;
-
 	WITH channel_neg SELECT
 		vneg <= buf_ch0 WHEN ch0,
 		        buf_ch1 WHEN ch1,
@@ -127,12 +124,12 @@ BEGIN
 		        buf_ch7 WHEN ch7,
 		        "000000000000" WHEN OTHERS;
 
-	-- Diff: full 16-bit subtraction (range is -4095..+4095, needs >12 bits)
+	-- Calculate differential mode
 	sample_diff <= std_logic_vector(
 		("0000" & unsigned(vpos)) - ("0000" & unsigned(vneg))
 	);
 
-	-- TTL: full 16-bit subtraction against fixed thresholds
+	-- Calculate TTL Comparison
 	WITH ttl_config SELECT
 		sample_ttl <=
 			std_logic_vector(resize(unsigned(vpos), 16) - to_unsigned(800, 16))  WHEN ttl_input_0,
@@ -141,13 +138,15 @@ BEGIN
 			std_logic_vector(resize(unsigned(vpos), 16) - to_unsigned(2700, 16)) WHEN ttl_output_1,
 			X"0000" WHEN OTHERS;
 
-	-- Pack 16-bit output: DEAD on error, zero-padded for single-ended, full width otherwise
+	-- Pack 16-bit output
+	-- DEAD on error, zero-padded for single-ended, full width otherwise
 	adc_data_reg <= X"DEAD" WHEN (channel = ch_error OR io_mode = err OR channel_neg = ch_error) ELSE
 	            "0000" & vpos    WHEN io_mode = sgl_end ELSE
 	            sample_diff      WHEN io_mode = diff ELSE
 	            sample_ttl       WHEN io_mode = ttl_debug ELSE
 	            X"0000";
 
+	--Assign tri-state bus to allow other devices to use SCOMP I/O
 	adc_data <= adc_data_reg WHEN io_read = '1' AND io_addr = "00000000011" ELSE (OTHERS => 'Z');
 
 	-- Process to latch config data
@@ -221,27 +220,24 @@ BEGIN
 							NULL;
 					END CASE;
 
-					-- Choose configuration word to send to ADC based on active_channel
-					-- LTC2308 cfg_word format: [S/D, ODD, A2, A1, UNI, SLP]
-					-- ODD bit interleaves even/odd channels, so channels must be
-					-- addressed in the order CH0,CH1,CH2,...CH7 using their correct words.
+					--Choose configuration word to send to ADC based on active_channel
 					CASE (ch_count + 1) MOD 8 IS
 						WHEN 0 =>
-							cfg_word <= "100010"; -- CH0: S/D=1, ODD=0, A2=0, A1=0
+							cfg_word <= "100010"; 
 						WHEN 1 =>
-							cfg_word <= "110010"; -- CH1: S/D=1, ODD=1, A2=0, A1=0
+							cfg_word <= "110010"; 
 						WHEN 2 =>
-							cfg_word <= "100110"; -- CH2: S/D=1, ODD=0, A2=0, A1=1
+							cfg_word <= "100110"; 
 						WHEN 3 =>
-							cfg_word <= "110110"; -- CH3: S/D=1, ODD=1, A2=0, A1=1
+							cfg_word <= "110110"; 
 						WHEN 4 =>
-							cfg_word <= "101010"; -- CH4: S/D=1, ODD=0, A2=1, A1=0
+							cfg_word <= "101010";
 						WHEN 5 =>
-							cfg_word <= "111010"; -- CH5: S/D=1, ODD=1, A2=1, A1=0
+							cfg_word <= "111010"; 
 						WHEN 6 =>
-							cfg_word <= "101110"; -- CH6: S/D=1, ODD=0, A2=1, A1=1
+							cfg_word <= "101110"; 
 						WHEN 7 =>
-							cfg_word <= "111110"; -- CH7: S/D=1, ODD=1, A2=1, A1=1
+							cfg_word <= "111110"; 
 						WHEN OTHERS =>
 							cfg_word <= "000000";
 					END CASE;
